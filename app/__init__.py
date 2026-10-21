@@ -188,17 +188,33 @@ def _register_error_handlers(app: Flask) -> None:
 def _configure_logging(app: Flask) -> None:
     if app.config.get("TESTING"):
         return
-    log_dir = app.instance_path
-    os.makedirs(log_dir, exist_ok=True)
-    if not app.logger.handlers:
+    if app.logger.handlers:
+        return
+    app.logger.setLevel(logging.INFO)
+    handler = _file_log_handler(app.instance_path)
+    if handler is not None:
+        app.logger.addHandler(handler)
+
+
+def _file_log_handler(log_dir: str) -> RotatingFileHandler | None:
+    """Build a rotating file handler, or ``None`` when the disk is read-only.
+
+    Serverless platforms (Vercel, AWS Lambda) mount the project directory
+    read-only, so there is nowhere durable to write a log file. Returning
+    ``None`` there keeps the app bootable and lets the platform capture
+    stdout instead.
+    """
+    try:
+        os.makedirs(log_dir, exist_ok=True)
         handler = RotatingFileHandler(
             os.path.join(log_dir, "databreakers.log"),
             maxBytes=1_000_000, backupCount=3, encoding="utf-8")
-        handler.setFormatter(logging.Formatter(
-            "%(asctime)s %(levelname)s %(name)s: %(message)s"))
-        handler.setLevel(logging.INFO)
-        app.logger.addHandler(handler)
-        app.logger.setLevel(logging.INFO)
+    except OSError:  # pragma: no cover - read-only deployment filesystem
+        return None
+    handler.setFormatter(logging.Formatter(
+        "%(asctime)s %(levelname)s %(name)s: %(message)s"))
+    handler.setLevel(logging.INFO)
+    return handler
 
 
 def _ensure_database() -> None:
