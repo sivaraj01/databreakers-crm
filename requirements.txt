@@ -27,7 +27,11 @@ scipy==1.18.1
 joblib==1.5.3
 
 # --- Database driver (PostgreSQL / Neon; used when DATABASE_URL is set) ---
-psycopg2-binary>=2.9.9
+# psycopg 3, not psycopg2: SQLAlchemy resolves the bare ``postgresql://``
+# scheme to its psycopg3 dialect, so shipping psycopg2 leaves the runtime
+# with "No module named 'psycopg'". The [binary] extra ships pre-built libpq,
+# which matters on serverless hosts that have no Postgres dev headers.
+psycopg[binary]>=3.2.0
 
 # --- Testing ---
 pytest>=8.3.0

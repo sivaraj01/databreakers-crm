@@ -24,6 +24,20 @@ def _bool(name: str, default: bool = False) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _database_url(raw: str) -> str:
+    """Normalise a ``DATABASE_URL`` into something SQLAlchemy accepts.
+
+    Hosted Postgres providers still hand out the pre-2011 ``postgres://``
+    scheme in places, which SQLAlchemy 2.x rejects outright. Rewrite it to
+    ``postgresql://``. An explicit driver (``postgresql+psycopg://``) is left
+    untouched so a deployment can pin the driver it actually ships.
+    """
+    url = (raw or "").strip()
+    if url.startswith("postgres://"):
+        return "postgresql://" + url[len("postgres://"):]
+    return url
+
+
 class Config:
     """Base configuration shared by every environment."""
 
@@ -38,8 +52,8 @@ class Config:
     ENV = os.environ.get("FLASK_ENV", "production")
 
     # --- Database ---
-    SQLALCHEMY_DATABASE_URI = os.environ.get(
-        "DATABASE_URL", f"sqlite:///{INSTANCE_DIR / 'databreakers_crm.db'}"
+    SQLALCHEMY_DATABASE_URI = _database_url(
+        os.environ.get("DATABASE_URL", f"sqlite:///{INSTANCE_DIR / 'databreakers_crm.db'}")
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {"pool_pre_ping": True}
