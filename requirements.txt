@@ -1,0 +1,39 @@
+# ============================================================
+# DataBreakers CRM & Business Analytics - Python dependencies
+# Install with:  pip install -r requirements.txt
+# ============================================================
+
+# --- Web framework ---
+Flask>=3.0.0
+Flask-SQLAlchemy>=3.1.0
+Flask-Login>=0.6.3
+Flask-WTF>=1.2.0
+WTForms>=3.1.0
+email-validator>=2.1.0
+
+# --- Configuration / environment ---
+python-dotenv>=1.0.1
+
+# --- Data analysis ---
+# Pinned: the fitted model pickles in ml/artifacts/ were produced by exactly
+# these versions, and scikit-learn refuses to load a pickle built by a
+# different version. Bump them together with `ml/train_*.py`.
+numpy==2.5.2
+pandas==3.0.5
+
+# --- Machine learning ---
+scikit-learn==1.9.0
+scipy==1.18.1
+joblib==1.5.3
+
+# --- Database driver (PostgreSQL / Neon; used when DATABASE_URL is set) ---
+psycopg2-binary>=2.9.9
+
+# --- Testing ---
+pytest>=8.3.0
+
+# --- Production server (used by Docker; harmless locally) ---
+gunicorn>=22.0.0
+
+# --- Optional: Excel export (only used if installed) ---
+openpyxl>=3.1.5

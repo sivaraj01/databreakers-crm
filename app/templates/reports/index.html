@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% from "macros.html" import db_empty %}
+{% block page_title %}Reports{% endblock %}
+{% block page_sub %}Filtered extracts with CSV and Excel export{% endblock %}
+{% block topbar_actions %}
+<a class="btn btn-outline-purple btn-sm" href="{{ url_for('reports.export_csv', type=kind, start=start.isoformat() if start else '', end=end.isoformat() if end else '') }}">
+  <i class="bi bi-filetype-csv me-1"></i>CSV
+</a>
+<a class="btn btn-outline-purple btn-sm" href="{{ url_for('reports.export_excel', type=kind, start=start.isoformat() if start else '', end=end.isoformat() if end else '') }}">
+  <i class="bi bi-file-earmark-excel me-1"></i>Excel
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="db-card mb-4">
+  <div class="db-card-body">
+    <form method="get" class="row g-2 align-items-end db-form">
+      <div class="col-md-4">
+        <label class="form-label" for="type">Report</label>
+        <select class="form-select" id="type" name="type">
+          {% for value, label in types %}
+          <option value="{{ value }}" {% if kind == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label" for="start">From</label>
+        <input class="form-control" type="date" id="start" name="start"
+               value="{{ start.isoformat() if start else '' }}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label" for="end">To</label>
+        <input class="form-control" type="date" id="end" name="end"
+               value="{{ end.isoformat() if end else '' }}">
+      </div>
+      <div class="col-md-2">
+        <button class="btn btn-primary w-100" type="submit">
+          <i class="bi bi-funnel me-1"></i>Run
+        </button>
+      </div>
+    </form>
+    <div class="form-text mt-2">
+      Exports respect your permissions - employees only receive the records they can access.
+      Excel export requires the optional <code>openpyxl</code> package.
+    </div>
+  </div>
+</div>
+
+<div class="db-card">
+  <div class="db-card-head">
+    <h2 class="db-card-title">{{ report_title }}</h2>
+    <span class="text-muted small">{{ total_rows }} row(s){% if truncated %} · showing first 500{% endif %}</span>
+  </div>
+  <div class="db-card-body flush">
+    {% if records %}
+    <div class="table-responsive">
+      <table class="db-table">
+        <thead><tr>{% for c in columns %}<th>{{ c }}</th>{% endfor %}</tr></thead>
+        <tbody>
+          {% for r in records %}
+          <tr>{% for c in columns %}<td>{{ r[c] }}</td>{% endfor %}</tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    {{ db_empty('bi-file-earmark-bar-graph', 'Nothing to show',
+                'No rows match this report with the selected date range. '
+                'Widen the filters or add data first.') }}
+    {% endif %}
+  </div>
+</div>
+
+<div class="db-card mt-4">
+  <div class="db-card-head"><h2 class="db-card-title">Monthly business analytics</h2></div>
+  <div class="db-card-body flush">
+    {% if monthly is not none and monthly|length %}
+    <div class="table-responsive">
+      <table class="db-table">
+        <thead><tr><th>Month</th><th class="text-end">Revenue</th>
+                   <th class="text-end">New leads</th><th class="text-end">Conversion %</th></tr></thead>
+        <tbody>
+          {% for r in monthly[::-1] %}
+          <tr>
+            <td>{{ r['Month'] }}</td>
+            <td class="text-end">{{ r['Revenue']|money }}</td>
+            <td class="text-end">{{ r['New Leads'] }}</td>
+            <td class="text-end">{{ r['Conversion %'] }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    {{ db_empty('bi-calendar3', 'No monthly data', 'Monthly analytics appear once leads and sales exist.') }}
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

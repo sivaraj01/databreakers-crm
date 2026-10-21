@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% from "macros.html" import db_empty, db_pagination %}
+{% block page_title %}Audit logs{% endblock %}
+{% block page_sub %}Security-relevant events: logins, deletions, permission changes{% endblock %}
+
+{% block content %}
+<div class="db-card mb-4">
+  <div class="db-card-body">
+    <form method="get" class="row g-2 align-items-end db-form">
+      <div class="col-md-5">
+        <label class="form-label" for="action">Action</label>
+        <select class="form-select" id="action" name="action">
+          <option value="">All actions</option>
+          {% for a in actions %}
+          <option value="{{ a }}" {% if action == a %}selected{% endif %}>{{ a }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <button class="btn btn-primary" type="submit"><i class="bi bi-funnel me-1"></i>Filter</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="db-card">
+  <div class="db-card-body flush">
+    {% if logs %}
+    <div class="table-responsive">
+      <table class="db-table">
+        <thead>
+          <tr><th>When</th><th>Actor</th><th>Action</th><th>Entity</th><th>Detail</th><th>IP</th></tr>
+        </thead>
+        <tbody>
+          {% for l in logs %}
+          <tr>
+            <td class="text-nowrap">{{ l.created_at|dt }}</td>
+            <td>{{ l.actor or '—' }}</td>
+            <td><span class="db-chip bg-light text-dark border">{{ l.action }}</span></td>
+            <td>{{ (l.entity or '—') ~ ('#' ~ l.entity_id if l.entity_id else '') }}</td>
+            <td class="small text-muted">{{ l.detail or '—' }}</td>
+            <td class="small text-muted">{{ l.ip_address or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="p-3">{{ db_pagination(pagination, 'admin.audit') }}</div>
+    {% else %}
+    {{ db_empty('bi-journal-text', 'No audit entries', 'Security-relevant actions are recorded here as they happen.') }}
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

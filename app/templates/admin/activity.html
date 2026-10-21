@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% from "macros.html" import db_empty, db_pagination %}
+{% block page_title %}Activity monitor{% endblock %}
+{% block page_sub %}What every user has been doing in the CRM{% endblock %}
+
+{% block content %}
+<div class="db-card">
+  <div class="db-card-body flush">
+    {% if activities %}
+    <div class="table-responsive">
+      <table class="db-table">
+        <thead><tr><th>When</th><th>User</th><th>Type</th><th>Action</th><th>Summary</th></tr></thead>
+        <tbody>
+          {% for a in activities %}
+          <tr>
+            <td class="text-nowrap">{{ a.created_at|dt }}</td>
+            <td>{{ a.user.name if a.user else 'System' }}</td>
+            <td><span class="db-chip bg-light text-dark border">{{ a.entity_type }}</span></td>
+            <td>{{ a.action }}</td>
+            <td class="small">{{ a.summary }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="p-3">{{ db_pagination(pagination, 'admin.activity') }}</div>
+    {% else %}
+    {{ db_empty('bi-activity', 'No activity yet', 'User actions will appear here.') }}
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

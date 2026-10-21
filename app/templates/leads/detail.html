@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+{% from "macros.html" import status_pill %}
+{% block page_title %}{{ lead.name }}{% endblock %}
+{% block page_sub %}Lead #{{ lead.id }} · created {{ lead.created_at|dt }}{% endblock %}
+{% block topbar_actions %}
+<a class="btn btn-outline-purple btn-sm" href="{{ url_for('leads.edit', lead_id=lead.id) }}">
+  <i class="bi bi-pencil me-1"></i>Edit
+</a>
+{% if lead.status != 'Converted' and lead.status != 'Lost' %}
+<form method="post" action="{{ url_for('leads.convert', lead_id=lead.id) }}"
+      class="d-inline" data-confirm="Convert {{ lead.name }} into a customer record?">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <button class="btn btn-cyan btn-sm" type="submit">
+    <i class="bi bi-arrow-repeat me-1"></i>Convert
+  </button>
+</form>
+{% endif %}
+<button class="btn btn-outline-danger btn-sm" type="button"
+        data-post="{{ url_for('leads.delete', lead_id=lead.id) }}"
+        data-confirm="Delete lead “{{ lead.name }}”? This cannot be undone.">
+  <i class="bi bi-trash"></i>
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  {# ---------- main column ---------- #}
+  <div class="col-lg-8">
+    <div class="db-card mb-4">
+      <div class="db-card-head">
+        <h2 class="db-card-title">Details</h2>
+        {{ status_pill(lead.status) }}
+      </div>
+      <div class="db-card-body">
+        <div class="row mb-3">
+          <div class="col-sm-6 mb-2">
+            <div class="db-section-title">Email</div>
+            <a href="mailto:{{ lead.email }}">{{ lead.email }}</a>
+          </div>
+          <div class="col-sm-6 mb-2">
+            <div class="db-section-title">Phone</div>
+            {% if lead.phone %}<a href="tel:{{ lead.phone }}">{{ lead.phone }}</a>{% else %}—{% endif %}
+          </div>
+        </div>
+        <div class="row mb-3">
+          <div class="col-sm-6 mb-2">
+            <div class="db-section-title">Company</div>{{ lead.company or '—' }}
+          </div>
+          <div class="col-sm-6 mb-2">
+            <div class="db-section-title">Source</div>{{ lead.source }}
+          </div>
+        </div>
+        <div class="row mb-3">
+          <div class="col-sm-6 mb-2">
+            <div class="db-section-title">Product interest</div>{{ lead.product_interest or '—' }}
+          </div>
+          <div class="col-sm-6 mb-2">
+            <div class="db-section-title">Expected deal value</div>
+            <span class="fw-semibold">{{ lead.expected_value|money }}</span>
+            <div class="form-text">Expected value, not booked revenue.</div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-sm-4 mb-2">
+            <div class="db-section-title">Assigned to</div>
+            {{ lead.assignee.name if lead.assignee else 'Unassigned' }}
+          </div>
+          <div class="col-sm-4 mb-2">
+            <div class="db-section-title">Last contact</div>
+            {{ lead.last_contact_at|dt if lead.last_contact_at else '—' }}
+          </div>
+          <div class="col-sm-4 mb-2">
+            <div class="db-section-title">Next follow-up</div>
+            {% if lead.next_followup_at %}
+              <span class="{% if lead.is_overdue %}text-danger fw-semibold{% endif %}">
+                {{ lead.next_followup_at|dt }}
+              </span>
+              {% if lead.is_overdue %}<span class="db-chip bg-danger bg-opacity-10 text-danger ms-1">overdue</span>{% endif %}
+            {% else %}—{% endif %}
+          </div>
+        </div>
+
+        {% if lead.converted_at %}
+        <div class="alert alert-success mt-3 mb-0 py-2">
+          <i class="bi bi-check2-circle me-1"></i>
+          Converted on {{ lead.converted_at|dt('%B %d, %Y') }}.
+          {% if lead.customer %}
+          <a href="{{ url_for('customers.detail', customer_id=lead.customer_id) }}">View customer →</a>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    {# ---------- notes ---------- #}
+    <div class="db-card mb-4">
+      <div class="db-card-head"><h2 class="db-card-title">Notes</h2></div>
+      <div class="db-card-body">
+        {% if lead.notes %}
+        <pre class="mb-3" style="white-space:pre-wrap;font-family:inherit;background:#fafbfe;border-radius:10px;padding:1rem;">{{ lead.notes }}</pre>
+        {% else %}
+        <p class="text-muted small">No notes recorded yet.</p>
+        {% endif %}
+        <form method="post" action="{{ url_for('leads.add_note', lead_id=lead.id) }}" class="db-form">
+          {{ note_form.hidden_tag() }}
+          <div class="mb-2">
+            {{ note_form.body(class_='form-control', rows=3,
+                              placeholder='Log a call, meeting outcome or context…') }}
+            {% for e in note_form.body.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+          </div>
+          {{ note_form.submit(class_='btn btn-primary btn-sm') }}
+        </form>
+      </div>
+    </div>
+  </div>
+
+  {# ---------- side column ---------- #}
+  <div class="col-lg-4">
+    <div class="db-card mb-4">
+      <div class="db-card-head"><h2 class="db-card-title">Quick status</h2></div>
+      <div class="db-card-body">
+        <form method="post" action="{{ url_for('leads.quick_status', lead_id=lead.id) }}" class="db-form">
+          {{ note_form.hidden_tag() }}
+          <div class="d-flex gap-2">
+            <select class="form-select" name="status">
+              {% for s in ['New','Contacted','Interested','Qualified','Converted','Lost'] %}
+              <option value="{{ s }}" {% if lead.status == s %}selected{% endif %}>{{ s }}</option>
+              {% endfor %}
+            </select>
+            <button class="btn btn-primary btn-sm" type="submit">Set</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="db-card mb-4">
+      <div class="db-card-head"><h2 class="db-card-title">Predicted conversion</h2></div>
+      <div class="db-card-body">
+        {% if lead_prediction and lead_prediction.available %}
+        <div class="d-flex align-items-center gap-3">
+          <div style="width:64px;height:64px;position:relative">
+            <canvas id="leadScore"></canvas>
+          </div>
+          <div>
+            <div class="fw-bold" style="font-size:1.3rem">{{ lead_prediction.percent }}%</div>
+            <div class="db-chip bg-{% if lead_prediction.band == 'High' %}success{% elif lead_prediction.band == 'Medium' %}warning{% else %}secondary{% endif %} bg-opacity-10
+                        text-{% if lead_prediction.band == 'High' %}success{% elif lead_prediction.band == 'Medium' %}warning{% else %}secondary{% endif %}">
+              {{ lead_prediction.band }} band
+            </div>
+          </div>
+        </div>
+        <p class="text-muted small mt-2 mb-2">
+          Model evaluated {{ lead_prediction.evaluated_at or 'unknown' }}.
+        </p>
+        <ul class="small text-muted ps-3 mb-0">
+          {% for limitation in (lead_prediction.limitations or [])[:2] %}
+          <li>{{ limitation }}</li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-muted small mb-2">
+          {{ lead_prediction.message if lead_prediction else 'Model not trained yet.' }}
+        </p>
+        <a class="btn btn-outline-purple btn-sm" href="{{ url_for('predictions.index') }}">
+          <i class="bi bi-cpu me-1"></i>Predictions
+        </a>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="db-card">
+      <div class="db-card-head">
+        <h2 class="db-card-title">Follow-ups</h2>
+        <a class="small" href="{{ url_for('followups.create') }}">Schedule</a>
+      </div>
+      <div class="db-card-body">
+        {% if lead.followups.count() %}
+        <div class="db-timeline">
+          {% for f in lead.followups.order_by('due_at desc').limit(6) %}
+          <div class="db-timeline-item">
+            <div class="db-timeline-when">
+              {{ f.due_at|dt }} · {{ f.kind }} · {{ f.status }}
+            </div>
+            <div class="small">{{ f.outcome or f.notes or 'No notes' }}</div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-muted small mb-0">No follow-ups scheduled for this lead yet.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if lead_prediction and lead_prediction.available %}
+<script>
+dbChart("leadScore", {
+  type: "doughnut",
+  data: { datasets: [{
+    data: [{{ lead_prediction.percent }}, {{ 100 - lead_prediction.percent }}],
+    backgroundColor: ["#8b5cf6", "#eef0f7"],
+    borderWidth: 0
+  }]},
+  options: { cutout: "72%", plugins: { legend: { display: false }, tooltip: { enabled: false } } }
+});
+</script>
+{% endif %}
+{% endblock %}

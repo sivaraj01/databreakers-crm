@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% from "macros.html" import db_empty, db_pagination %}
+{% block page_title %}Notifications{% endblock %}
+{% block page_sub %}In-app alerts for assignments, follow-ups and conversions{% endblock %}
+{% block topbar_actions %}
+<form method="post" action="{{ url_for('notifications.mark_all_read') }}" class="d-inline">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <button class="btn btn-outline-purple btn-sm" type="submit">
+    <i class="bi bi-check-all me-1"></i>Mark all read
+  </button>
+</form>
+<button class="btn btn-outline-danger btn-sm" type="button"
+        data-post="{{ url_for('notifications.clear') }}"
+        data-confirm="Clear every notification?">
+  <i class="bi bi-trash"></i>
+</button>
+{% endblock %}
+
+{% block content %}
+<ul class="nav nav-pills mb-3">
+  <li class="nav-item">
+    <a class="nav-link {% if filter == 'all' %}active{% endif %}"
+       href="{{ url_for('notifications.index', filter='all') }}">All</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link {% if filter == 'unread' %}active{% endif %}"
+       href="{{ url_for('notifications.index', filter='unread') }}">
+      Unread {% if unread %}<span class="db-chip bg-white bg-opacity-25 text-reset">{{ unread }}</span>{% endif %}
+    </a>
+  </li>
+</ul>
+
+<div class="db-card">
+  <div class="db-card-body flush">
+    {% if notifications %}
+    <div class="list-group list-group-flush">
+      {% for n in notifications %}
+      <div class="list-group-item d-flex align-items-start gap-3 py-3 {% if not n.is_read %}bg-light{% endif %}">
+        <div class="db-stat-icon mt-0" style="margin-bottom:0">
+          <i class="bi {{ n.icon }}"></i>
+        </div>
+        <div class="flex-grow-1">
+          <div class="fw-semibold {% if not n.is_read %}fw-bold{% endif %}">{{ n.title }}</div>
+          {% if n.body %}<div class="small text-muted">{{ n.body }}</div>{% endif %}
+          <div class="small text-muted mt-1">{{ n.created_at|dt }}</div>
+        </div>
+        <div class="text-nowrap">
+          {% if not n.is_read %}
+          <form method="post" action="{{ url_for('notifications.mark_read', notification_id=n.id) }}" class="d-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-sm btn-light" type="submit" title="Mark read">
+              <i class="bi bi-check2"></i>
+            </button>
+          </form>
+          {% endif %}
+          {% if n.link %}
+          <a class="btn btn-sm btn-outline-purple" href="{{ n.link }}">Open</a>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="p-3">{{ db_pagination(pagination, 'notifications.index') }}</div>
+    {% else %}
+    {{ db_empty('bi-bell', 'No notifications',
+                'You will be notified here when a lead is assigned to you, a follow-up '
+                'is due or overdue, or a lead is converted. '
+                'Email and WhatsApp delivery are not configured in this build.') }}
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

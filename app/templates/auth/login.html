@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block topbar %}{% endblock %}
+{% block content %}
+<div class="db-login-bg">
+  <div class="db-login-card">
+    <div class="text-center mb-4">
+      <img src="{{ url_for('static', filename='images/databreakers-logo.png') }}"
+           alt="DataBreakers" style="width:64px;height:64px;border-radius:16px"
+           class="mb-2 shadow-sm">
+      <h1 class="h4 fw-bold mb-0">DataBreakers</h1>
+      <p class="text-muted small mb-0">CRM &amp; Business Analytics</p>
+    </div>
+
+    <form method="post" class="db-form" novalidate data-loading="1">
+      {{ form.hidden_tag() }}
+      <div class="mb-3">
+        <label class="form-label db-required" for="{{ form.email.id }}">Email</label>
+        {{ form.email(class_='form-control' + (' is-invalid' if form.email.errors else ''),
+                      placeholder='you@company.com', autofocus=true,
+                      autocomplete='username') }}
+        {% for e in form.email.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label db-required" for="{{ form.password.id }}">Password</label>
+        {{ form.password(class_='form-control' + (' is-invalid' if form.password.errors else ''),
+                         placeholder='••••••••', autocomplete='current-password') }}
+        {% for e in form.password.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+      </div>
+
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="form-check">
+          {{ form.remember(class_='form-check-input') }}
+          <label class="form-check-label small text-muted" for="{{ form.remember.id }}">
+            Remember me
+          </label>
+        </div>
+      </div>
+
+      {{ form.submit(class_='btn btn-primary w-100') }}
+    </form>
+
+    <p class="text-center text-muted small mt-4 mb-0">
+      Need an account? Ask an administrator to create one from
+      <strong>User Management</strong>.
+    </p>
+  </div>
+</div>
+{% endblock %}

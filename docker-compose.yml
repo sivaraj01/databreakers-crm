@@ -1,0 +1,43 @@
+# ============================================================
+# DataBreakers CRM - docker compose
+#
+#   cp .env.example .env      # then set SECRET_KEY (and anything else)
+#   docker compose up --build
+#   → http://localhost:5000
+#
+#   Create the first admin (password prompted, never hardcoded):
+#   docker compose exec web python scripts/init_db.py --create-admin
+#
+#   Optional demo data:
+#   docker compose exec web python scripts/seed_demo_data.py
+# ============================================================
+services:
+  web:
+    build: .
+    image: databreakers-crm:latest
+    container_name: databreakers-crm
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    env_file:
+      # Loaded only if present; create it with: cp .env.example .env
+      - path: .env
+        required: false
+    environment:
+      FLASK_ENV: ${FLASK_ENV:-production}
+      # SECRET_KEY is read from .env / the host environment - never committed.
+      SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in .env before starting}
+      DATABASE_URL: sqlite:////app/instance/databreakers_crm.db
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-0}
+    volumes:
+      # Persist the SQLite database across rebuilds.
+      - crm-data:/app/instance
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:5000/auth/login", "-o", "/dev/null"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  crm-data:

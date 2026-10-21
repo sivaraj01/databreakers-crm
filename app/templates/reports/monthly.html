@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% from "macros.html" import db_empty %}
+{% block page_title %}Monthly analytics{% endblock %}
+{% block page_sub %}Last {{ months }} months of revenue, leads and conversion{% endblock %}
+{% block topbar_actions %}
+<div class="btn-group">
+  {% for n in [6, 12, 24] %}
+  <a class="btn btn-sm {% if months == n %}btn-primary{% else %}btn-outline-purple{% endif %}"
+     href="{{ url_for('reports.monthly', months=n) }}">{{ n }}m</a>
+  {% endfor %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="db-card mb-4">
+  <div class="db-card-head"><h2 class="db-card-title">Trend</h2></div>
+  <div class="db-card-body">
+    <div class="db-chart-wrap"><canvas id="monthlyChart"></canvas></div>
+  </div>
+</div>
+
+<div class="db-card">
+  <div class="db-card-body flush">
+    {% if records %}
+    <div class="table-responsive">
+      <table class="db-table">
+        <thead><tr><th>Month</th><th class="text-end">Revenue</th>
+                   <th class="text-end">New leads</th><th class="text-end">Conversion %</th></tr></thead>
+        <tbody>
+          {% for r in records[::-1] %}
+          <tr>
+            <td>{{ r['Month'] }}</td>
+            <td class="text-end">{{ r['Revenue']|money }}</td>
+            <td class="text-end">{{ r['New Leads'] }}</td>
+            <td class="text-end">{{ r['Conversion %'] }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    {{ db_empty('bi-calendar3', 'No data yet', 'Monthly analytics appear once leads and sales exist.') }}
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+dbChart("monthlyChart", {
+  type: "bar",
+  data: {
+    labels: {{ chart['Month']|tojson }},
+    datasets: [
+      { label: "Revenue", data: {{ chart['Revenue']|tojson }},
+        backgroundColor: "#8b5cf6", borderRadius: 6, yAxisID: "y" },
+      { label: "New leads", data: {{ chart['New Leads']|tojson }},
+        backgroundColor: "#22d3ee", borderRadius: 6, yAxisID: "y1" }
+    ]
+  },
+  options: {
+    scales: {
+      y: { beginAtZero: true, position: "left" },
+      y1: { beginAtZero: true, position: "right", grid: { drawOnChartArea: false } }
+    },
+    plugins: { legend: { display: true, position: "bottom" } }
+  }
+});
+</script>
+{% endblock %}

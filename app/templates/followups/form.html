@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block page_title %}Schedule follow-up{% endblock %}
+{% block page_sub %}Assign a call, meeting or demo to an employee{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="db-card">
+      <div class="db-card-body">
+        <form method="post" class="db-form" novalidate>
+          {{ form.hidden_tag() }}
+          <div class="row">
+            <div class="col-md-4 mb-3">
+              <label class="form-label db-required" for="{{ form.subject_type.id }}">Related to</label>
+              {{ form.subject_type(class_='form-select', **{'data-subject-toggle': '1'}) }}
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label" for="{{ form.kind.id }}">Type</label>
+              {{ form.kind(class_='form-select') }}
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label db-required" for="{{ form.assigned_to.id }}">Assign to</label>
+              {{ form.assigned_to(class_='form-select' + (' is-invalid' if form.assigned_to.errors else '')) }}
+              {% for e in form.assigned_to.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label" for="{{ form.lead_id.id }}">Lead</label>
+              {{ form.lead_id(class_='form-select' + (' is-invalid' if form.lead_id.errors else '')) }}
+              {% for e in form.lead_id.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label" for="{{ form.customer_id.id }}">Customer</label>
+              {{ form.customer_id(class_='form-select' + (' is-invalid' if form.customer_id.errors else '')) }}
+              {% for e in form.customer_id.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label db-required" for="{{ form.due_at.id }}">Due date &amp; time</label>
+            {{ form.due_at(class_='form-control' + (' is-invalid' if form.due_at.errors else ''),
+                           placeholder='2026-01-31 10:30') }}
+            {% for e in form.due_at.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label" for="{{ form.notes.id }}">Call / meeting notes</label>
+            {{ form.notes(class_='form-control', rows=3, placeholder='Agenda, talking points, context…') }}
+          </div>
+
+          <div class="d-flex gap-2">
+            {{ form.submit(class_='btn btn-primary') }}
+            <a class="btn btn-light" href="{{ url_for('followups.index') }}">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% from "macros.html" import db_empty %}
+{% block page_title %}Zia AI{% endblock %}
+{% block page_sub %}Ask questions about your pipeline in plain language{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-8">
+    <div class="db-card mb-4">
+      <div class="db-card-head">
+        <h2 class="db-card-title"><i class="bi bi-stars me-1 text-primary"></i>Ask Zia AI</h2>
+        <span class="db-chip bg-light text-dark border">
+          {% if llm_configured %}AI wording enabled{% else %}Built-in engine{% endif %}
+        </span>
+      </div>
+      <div class="db-card-body">
+        {% if answer %}
+        <div class="mb-3">
+          <div class="db-zia-bubble db-zia-user mb-2">{{ answer.question }}</div>
+          <div class="db-zia-bubble db-zia-bot">{{ answer.answer }}</div>
+          <div class="d-flex align-items-center gap-2 mt-2">
+            <span class="db-zia-source">
+              Answered by:
+              {% if answer.source == 'local' %}built-in analytics engine
+              {% elif answer.source == 'llm' %}AI language model (numbers from your CRM)
+              {% else %}built-in engine (AI provider unreachable){% endif %}
+            </span>
+          </div>
+          {% if answer.llm_error %}
+          <div class="alert alert-warning small mt-2 mb-0">
+            <i class="bi bi-exclamation-triangle me-1"></i>
+            The configured AI provider could not be reached: {{ answer.llm_error }}.
+          </div>
+          {% endif %}
+        </div>
+        {% else %}
+        {{ db_empty('bi-stars', 'Ask Zia AI anything',
+                    'Zia reads only the data you are permitted to see, then answers with real '
+                    'numbers from your CRM. It never invents figures.') }}
+        {% endif %}
+
+        <form method="post" class="db-form db-quick-ask" data-loading="1">
+          {{ form.hidden_tag() }}
+          <div class="flex-grow-1">
+            {{ form.question(class_='form-control' + (' is-invalid' if form.question.errors else ''),
+                             rows=2,
+                             placeholder='e.g. Which leads need follow-up today?') }}
+            {% for e in form.question.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+          </div>
+          {{ form.submit(class_='btn btn-primary') }}
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="db-card mb-4">
+      <div class="db-card-head"><h2 class="db-card-title">Try asking</h2></div>
+      <div class="db-card-body">
+        <div class="d-grid gap-2">
+          {% for c in capabilities %}
+          <button class="btn btn-light text-start btn-sm" type="button"
+                  data-zia-quick="{{ c }}">
+            <i class="bi bi-arrow-right-circle me-1 text-primary"></i>{{ c }}
+          </button>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="db-card">
+      <div class="db-card-head"><h2 class="db-card-title">How Zia works</h2></div>
+      <div class="db-card-body small text-muted">
+        <p><strong>1. Scoped data.</strong> Zia only queries records you are
+           allowed to see. Employees never see another employee's restricted data.</p>
+        <p><strong>2. Real numbers.</strong> Figures are computed by the same
+           services the dashboard uses - SQL aggregations and pandas.</p>
+        <p><strong>3. Honest AI.</strong>
+           {% if llm_configured %}
+           An AI provider is configured, so it words the answer using the verified
+           numbers. If the call fails, Zia says so and falls back to plain text.
+           {% else %}
+           No AI provider is configured, so Zia answers with the built-in
+           deterministic engine. To enable AI wording, set <code>ZIA_LLM_API_KEY</code>
+           in your <code>.env</code> file and restart the app.
+           {% endif %}
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll("[data-zia-quick]").forEach(function (btn) {
+  btn.addEventListener("click", function () {
+    var box = document.querySelector('textarea[name="question"]');
+    if (!box) return;
+    box.value = btn.getAttribute("data-zia-quick");
+    box.focus();
+    box.form.requestSubmit();
+  });
+});
+</script>
+{% endblock %}

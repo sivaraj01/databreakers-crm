@@ -1,0 +1,86 @@
+{#- Reusable Jinja macros for DataBreakers CRM -#}
+
+{#- Render a WTForms field with label, errors and help text -#}
+{% macro db_field(field, class_='form-control', placeholder='') -%}
+  <div class="mb-3">
+    <label class="form-label {% if field.flags.required %}db-required{% endif %}"
+           for="{{ field.id }}">{{ field.label.text }}</label>
+    {% if field.type == 'SelectField' %}
+      {{ field(class_='form-select ' + class_, **kwargs) }}
+    {% elif field.type == 'BooleanField' %}
+      <div class="form-check">
+        {{ field(class_='form-check-input') }}
+        <label class="form-check-label" for="{{ field.id }}">{{ field.label.text }}</label>
+      </div>
+    {% elif field.type == 'TextAreaField' %}
+      {{ field(class_='form-control ' + class_, rows=rows|default(3),
+               placeholder=placeholder, **kwargs) }}
+    {% else %}
+      {{ field(class_='form-control ' + class_, placeholder=placeholder, **kwargs) }}
+    {% endif %}
+    {% if field.errors %}
+      {% for error in field.errors %}
+        <div class="invalid-feedback d-block">{{ error }}</div>
+      {% endfor %}
+    {% endif %}
+    {% if field.description %}
+      <div class="form-text">{{ field.description }}</div>
+    {% endif %}
+  </div>
+{%- endmacro %}
+
+{#- Empty state panel -#}
+{% macro db_empty(icon, title, text, action_href='', action_label='') -%}
+  <div class="db-empty">
+    <div class="db-empty-icon"><i class="bi {{ icon }}"></i></div>
+    <h5>{{ title }}</h5>
+    <p>{{ text }}</p>
+    {% if action_href %}
+      <a class="btn btn-primary btn-sm" href="{{ action_href }}">{{ action_label }}</a>
+    {% endif %}
+  </div>
+{%- endmacro %}
+
+{#- Status pill driven by lead status name -#}
+{% macro status_pill(status) -%}
+  {% set tone = {'New': 'info', 'Contacted': 'primary', 'Interested': 'secondary',
+                 'Qualified': 'warning', 'Converted': 'success', 'Lost': 'danger',
+                 'Completed': 'success', 'Pending': 'warning', 'Refunded': 'danger',
+                 'Cancelled': 'secondary'} %}
+  <span class="db-chip bg-{{ tone.get(status, 'secondary') }} bg-opacity-10 text-{{ tone.get(status, 'secondary') }}">
+    {{ status }}
+  </span>
+{%- endmacro %}
+
+{#- Pagination controls.
+   request.args may already contain `page`, which would collide with the
+   explicit page= kwarg passed to url_for, so it is stripped out first. -#}
+{% macro db_pagination(pagination, endpoint) -%}
+  {% if pagination and pagination.pages > 1 %}
+  {% set args = request.args.to_dict() %}
+  {% set _discard = args.pop('page', None) %}
+  <nav aria-label="Pagination" class="mt-3">
+    <ul class="pagination db-pagination justify-content-center mb-0">
+      <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+        <a class="page-link" href="{{ url_for(endpoint, page=pagination.prev_num, **args) }}">
+          <i class="bi bi-chevron-left"></i>
+        </a>
+      </li>
+      {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+        {% if p %}
+          <li class="page-item {% if p == pagination.page %}active{% endif %}">
+            <a class="page-link" href="{{ url_for(endpoint, page=p, **args) }}">{{ p }}</a>
+          </li>
+        {% else %}
+          <li class="page-item disabled"><span class="page-link">…</span></li>
+        {% endif %}
+      {% endfor %}
+      <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+        <a class="page-link" href="{{ url_for(endpoint, page=pagination.next_num, **args) }}">
+          <i class="bi bi-chevron-right"></i>
+        </a>
+      </li>
+    </ul>
+  </nav>
+  {% endif %}
+{%- endmacro %}

@@ -1,0 +1,7 @@
+# Generated ML artifacts live here.
+#
+# Regenerate them with:
+#   python ml/train_lead_model.py
+#   python ml/train_sales_model.py
+#
+# The .pkl and .json files are git-ignored; this placeholder keeps the folder.

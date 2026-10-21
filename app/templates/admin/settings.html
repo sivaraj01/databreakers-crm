@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block page_title %}Settings{% endblock %}
+{% block page_sub %}Application-level configuration{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <div class="db-card mb-4">
+      <div class="db-card-head"><h2 class="db-card-title">General</h2></div>
+      <div class="db-card-body">
+        <form method="post" class="db-form" novalidate>
+          {{ form.hidden_tag() }}
+          <div class="mb-3">
+            <label class="form-label db-required" for="{{ form.site_name.id }}">Site name</label>
+            {{ form.site_name(class_='form-control' + (' is-invalid' if form.site_name.errors else '')) }}
+            {% for e in form.site_name.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+          </div>
+          <div class="mb-3">
+            <label class="form-label db-required" for="{{ form.items_per_page.id }}">Leads per page</label>
+            {{ form.items_per_page(class_='form-control' + (' is-invalid' if form.items_per_page.errors else '')) }}
+            {% for e in form.items_per_page.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+            <div class="form-text">Applies to the leads list pagination (5–100).</div>
+          </div>
+          <div class="mb-3">
+            <div class="form-check">
+              {{ form.enable_zia_llm(class_='form-check-input') }}
+              <label class="form-check-label" for="{{ form.enable_zia_llm.id }}">
+                Let Zia AI use the configured LLM provider
+              </label>
+            </div>
+            <div class="form-text">
+              {% if llm_configured %}
+              A provider key <strong>is</strong> configured in the environment.
+              Turning this off makes Zia answer with the built-in engine only.
+              {% else %}
+              No provider key is configured. Zia currently uses the built-in
+              deterministic engine. Add <code>ZIA_LLM_API_KEY</code> to your
+              <code>.env</code> file to enable AI wording.
+              {% endif %}
+            </div>
+          </div>
+          {{ form.submit(class_='btn btn-primary') }}
+        </form>
+      </div>
+    </div>
+
+    <div class="db-card">
+      <div class="db-card-head"><h2 class="db-card-title">Security posture</h2></div>
+      <div class="db-card-body">
+        <div class="db-metric-row">
+          <span class="db-metric-label">Password storage</span>
+          <span class="db-metric-value">PBKDF2-SHA256 hashed</span>
+        </div>
+        <div class="db-metric-row">
+          <span class="db-metric-label">CSRF protection</span>
+          <span class="db-metric-value">Enabled on all forms</span>
+        </div>
+        <div class="db-metric-row">
+          <span class="db-metric-label">Session cookie HttpOnly</span>
+          <span class="db-metric-value">{{ 'Yes' if config.SESSION_COOKIE_HTTPONLY else 'No' }}</span>
+        </div>
+        <div class="db-metric-row">
+          <span class="db-metric-label">Session cookie Secure</span>
+          <span class="db-metric-value">{{ 'Yes' if config.SESSION_COOKIE_SECURE else 'No (dev)' }}</span>
+        </div>
+        <div class="db-metric-row">
+          <span class="db-metric-label">Session SameSite</span>
+          <span class="db-metric-value">{{ config.SESSION_COOKIE_SAMESITE }}</span>
+        </div>
+        <p class="small text-muted mt-3 mb-0">
+          Cookie flags marked "No (dev)" are switched on automatically in the
+          production configuration. See <code>config.py</code>.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

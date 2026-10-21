@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+{% from "macros.html" import db_empty %}
+{% block page_title %}Analytics{% endblock %}
+{% block page_sub %}Every metric is computed from your database with a documented formula{% endblock %}
+
+{% block content %}
+{# ---------- headline metrics ---------- #}
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg-3">
+    <div class="db-stat">
+      <div class="db-stat-icon"><i class="bi bi-funnel"></i></div>
+      <div class="db-stat-label">Total leads</div><div class="db-stat-value">{{ overview.total_leads }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="db-stat db-stat-cyan">
+      <div class="db-stat-icon"><i class="bi bi-check2-circle"></i></div>
+      <div class="db-stat-label">Converted</div><div class="db-stat-value">{{ overview.converted }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="db-stat">
+      <div class="db-stat-icon"><i class="bi bi-graph-up-arrow"></i></div>
+      <div class="db-stat-label">Conversion rate</div>
+      <div class="db-stat-value">{{ overview.conversion_rate }}%</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="db-stat db-stat-cyan">
+      <div class="db-stat-icon"><i class="bi bi-percent"></i></div>
+      <div class="db-stat-label">Retention</div>
+      <div class="db-stat-value">{{ retention.retention_rate }}%</div>
+    </div>
+  </div>
+</div>
+
+{# ---------- lead source performance ---------- #}
+<div class="db-card mb-4">
+  <div class="db-card-head">
+    <h2 class="db-card-title">Lead source performance</h2>
+  </div>
+  <div class="db-card-body">
+    <div class="db-formula mb-3">{{ overview.formulas.lead_source_performance }}</div>
+    {% if not source.empty %}
+    <div class="table-responsive">
+      <table class="db-table">
+        <thead><tr>{% for h in source.headers %}<th>{{ h }}</th>{% endfor %}</tr></thead>
+        <tbody>
+          {% for r in source.records %}
+          <tr>{% for h in source.headers %}<td>{{ r[h] }}</td>{% endfor %}</tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    {{ db_empty('bi-diagram-3', 'No lead data', 'Add leads to see which channel brings the best win rate.') }}
+    {% endif %}
+  </div>
+</div>
+
+{# ---------- charts ---------- #}
+<div class="row g-3 mb-4">
+  <div class="col-lg-6">
+    <div class="db-card h-100">
+      <div class="db-card-head"><h2 class="db-card-title">Monthly sales trend</h2></div>
+      <div class="db-card-body">
+        <div class="db-chart-wrap sm"><canvas id="anTrend"></canvas></div>
+        <div class="db-formula mt-3">{{ overview.formulas.revenue_by_product }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="db-card h-100">
+      <div class="db-card-head"><h2 class="db-card-title">Customer acquisition</h2></div>
+      <div class="db-card-body">
+        <div class="db-chart-wrap sm"><canvas id="anGrowth"></canvas></div>
+        <div class="db-formula mt-3">{{ overview.formulas.acquisition_trend }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-lg-6">
+    <div class="db-card h-100">
+      <div class="db-card-head"><h2 class="db-card-title">Revenue by product</h2></div>
+      <div class="db-card-body">
+        {% if by_product.labels %}
+        <div class="db-chart-wrap"><canvas id="anProduct"></canvas></div>
+        {% else %}
+        {{ db_empty('bi-box-seam', 'No product revenue', 'Record a sale to compare products.') }}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="db-card h-100">
+      <div class="db-card-head"><h2 class="db-card-title">Revenue by employee</h2></div>
+      <div class="db-card-body">
+        {% if by_employee.labels %}
+        <div class="db-chart-wrap"><canvas id="anEmployee"></canvas></div>
+        <div class="db-formula mt-3">{{ overview.formulas.revenue_by_employee }}</div>
+        {% else %}
+        {{ db_empty('bi-person-badge', 'No attributed revenue', 'Sales recorded by each employee appear here.') }}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ---------- segmentation + retention ---------- #}
+<div class="row g-3 mb-4">
+  <div class="col-lg-6">
+    <div class="db-card h-100">
+      <div class="db-card-head"><h2 class="db-card-title">Customer segmentation</h2></div>
+      <div class="db-card-body">
+        <div class="db-formula mb-3">{{ overview.formulas.clv_segment }}</div>
+        {% if not segments.empty %}
+        <div class="table-responsive">
+          <table class="db-table">
+            <thead><tr>{% for h in segments.headers %}<th>{{ h }}</th>{% endfor %}</tr></thead>
+            <tbody>
+              {% for r in segments.records %}
+              <tr>{% for h in segments.headers %}<td>{{ r[h] }}</td>{% endfor %}</tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        {{ db_empty('bi-people', 'No customers', 'Create customers to segment them by lifetime value.') }}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="db-card h-100">
+      <div class="db-card-head"><h2 class="db-card-title">Retention</h2></div>
+      <div class="db-card-body">
+        <div class="db-formula mb-3">{{ retention.formula }}</div>
+        <div class="db-metric-row"><span class="db-metric-label">Total customers</span>
+          <span class="db-metric-value">{{ retention.total_customers }}</span></div>
+        <div class="db-metric-row"><span class="db-metric-label">Active (365d)</span>
+          <span class="db-metric-value">{{ retention.active_customers }}</span></div>
+        <div class="db-metric-row"><span class="db-metric-label">Lapsed</span>
+          <span class="db-metric-value">{{ retention.churned_customers }}</span></div>
+        <div class="db-metric-row"><span class="db-metric-label">Retention rate</span>
+          <span class="db-metric-value">{{ retention.retention_rate }}%</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ---------- engagement ---------- #}
+<div class="db-card">
+  <div class="db-card-head"><h2 class="db-card-title">Customer engagement (last 6 months)</h2></div>
+  <div class="db-card-body">
+    <div class="db-formula mb-3">{{ overview.formulas.engagement }}</div>
+    {% if not engagement.empty %}
+    <div class="table-responsive">
+      <table class="db-table">
+        <thead><tr>{% for h in engagement.headers %}<th>{{ h }}</th>{% endfor %}</tr></thead>
+        <tbody>
+          {% for r in engagement.records[:15] %}
+          <tr>{% for h in engagement.headers %}<td>{{ r[h] }}</td>{% endfor %}</tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    {{ db_empty('bi-chat-dots', 'No engagement data', 'Log interactions and follow-ups to see engagement scores.') }}
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+dbChart("anTrend", {
+  type: "line",
+  data: { labels: {{ trend['labels']|tojson }}, datasets: [{
+    label: "Revenue", data: {{ trend['values']|tojson }},
+    borderColor: "#8b5cf6", fill: true,
+    backgroundColor: window.dbGradient(document.getElementById("anTrend"), "#8b5cf6"),
+    tension: .35 }]},
+  options: { scales: { y: { beginAtZero: true } } }
+});
+
+dbChart("anGrowth", {
+  type: "line",
+  data: { labels: {{ growth['labels']|tojson }}, datasets: [{
+    label: "Customers", data: {{ growth['values']|tojson }},
+    borderColor: "#22d3ee", fill: true,
+    backgroundColor: window.dbGradient(document.getElementById("anGrowth"), "#22d3ee"),
+    tension: .35 }]},
+  options: { scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+});
+
+{% if by_product.labels %}
+dbChart("anProduct", {
+  type: "bar",
+  data: { labels: {{ by_product['labels']|tojson }}, datasets: [{
+    label: "Revenue", data: {{ by_product['values']|tojson }},
+    backgroundColor: "#8b5cf6", borderRadius: 6 }]},
+  options: { indexAxis: "y", scales: { x: { beginAtZero: true } } }
+});
+{% endif %}
+
+{% if by_employee.labels %}
+dbChart("anEmployee", {
+  type: "bar",
+  data: { labels: {{ by_employee['labels']|tojson }}, datasets: [{
+    label: "Revenue", data: {{ by_employee['values']|tojson }},
+    backgroundColor: "#22d3ee", borderRadius: 6 }]},
+  options: { scales: { y: { beginAtZero: true } } }
+});
+{% endif %}
+</script>
+{% endblock %}

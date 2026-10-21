@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block page_title %}My profile{% endblock %}
+{% block page_sub %}Your account details and security settings{% endblock %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-6">
+    <div class="db-card">
+      <div class="db-card-head"><h2 class="db-card-title">Profile</h2></div>
+      <div class="db-card-body">
+        <form method="post" class="db-form" novalidate>
+          {{ form.hidden_tag() }}
+          <div class="mb-3">
+            <label class="form-label db-required" for="{{ form.name.id }}">Full name</label>
+            {{ form.name(class_='form-control' + (' is-invalid' if form.name.errors else '')) }}
+            {% for e in form.name.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+          </div>
+          <div class="mb-3">
+            <label class="form-label db-required" for="{{ form.email.id }}">Email</label>
+            {{ form.email(class_='form-control' + (' is-invalid' if form.email.errors else '')) }}
+            {% for e in form.email.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+          </div>
+          {{ form.submit(class_='btn btn-primary') }}
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="db-card mb-4">
+      <div class="db-card-head"><h2 class="db-card-title">Account</h2></div>
+      <div class="db-card-body">
+        <div class="db-metric-row">
+          <span class="db-metric-label">Role</span>
+          <span class="db-metric-value">{{ current_user.role_label }}</span>
+        </div>
+        <div class="db-metric-row">
+          <span class="db-metric-label">Status</span>
+          <span class="db-metric-value">
+            {% if current_user.is_active %}
+              <span class="db-chip bg-success bg-opacity-10 text-success">Active</span>
+            {% else %}
+              <span class="db-chip bg-danger bg-opacity-10 text-danger">Deactivated</span>
+            {% endif %}
+          </span>
+        </div>
+        <div class="db-metric-row">
+          <span class="db-metric-label">Member since</span>
+          <span class="db-metric-value">{{ current_user.created_at|dt('%B %d, %Y') }}</span>
+        </div>
+        <div class="db-metric-row">
+          <span class="db-metric-label">Last sign-in</span>
+          <span class="db-metric-value">{{ current_user.last_login_at|dt if current_user.last_login_at else '—' }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="db-card">
+      <div class="db-card-head"><h2 class="db-card-title">Security</h2></div>
+      <div class="db-card-body">
+        <p class="text-muted small">Passwords are stored only as salted hashes. Your current password is required to change it.</p>
+        <a class="btn btn-outline-purple" href="{{ url_for('auth.change_password') }}">
+          <i class="bi bi-key me-1"></i>Change password
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

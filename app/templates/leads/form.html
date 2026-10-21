@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block page_title %}{{ 'Edit ' ~ lead.name if lead else 'New lead' }}{% endblock %}
+{% block page_sub %}All fields are validated on the server{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-9">
+    <div class="db-card">
+      <div class="db-card-body">
+        <form method="post" class="db-form" novalidate>
+          {{ form.hidden_tag() }}
+
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label db-required" for="{{ form.name.id }}">Lead name</label>
+              {{ form.name(class_='form-control' + (' is-invalid' if form.name.errors else ''),
+                           placeholder='e.g. Priya Sharma') }}
+              {% for e in form.name.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label db-required" for="{{ form.email.id }}">Email</label>
+              {{ form.email(class_='form-control' + (' is-invalid' if form.email.errors else ''),
+                            placeholder='name@company.com') }}
+              {% for e in form.email.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-md-4 mb-3">
+              <label class="form-label" for="{{ form.phone.id }}">Phone</label>
+              {{ form.phone(class_='form-control', placeholder='+91 …') }}
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label" for="{{ form.company.id }}">Company</label>
+              {{ form.company(class_='form-control', placeholder='Company name') }}
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label db-required" for="{{ form.source.id }}">Lead source</label>
+              {{ form.source(class_='form-select' + (' is-invalid' if form.source.errors else '')) }}
+              {% for e in form.source.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-md-4 mb-3">
+              <label class="form-label" for="{{ form.product_interest.id }}">Product interest</label>
+              {{ form.product_interest(class_='form-select') }}
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label" for="{{ form.expected_value.id }}">Expected deal value</label>
+              {{ form.expected_value(class_='form-control' + (' is-invalid' if form.expected_value.errors else ''),
+                                     placeholder='0.00') }}
+              {% for e in form.expected_value.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+              <div class="form-text">This is an expectation, not revenue.</div>
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label db-required" for="{{ form.status.id }}">Status</label>
+              {{ form.status(class_='form-select' + (' is-invalid' if form.status.errors else '')) }}
+              {% for e in form.status.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label" for="{{ form.assigned_to.id }}">Assign to</label>
+              {{ form.assigned_to(class_='form-select') }}
+              {% if not current_user.is_admin %}
+              <div class="form-text">Employees can assign leads only to themselves.</div>
+              {% endif %}
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label" for="{{ form.next_followup_at.id }}">Next follow-up</label>
+              {{ form.next_followup_at(class_='form-control' + (' is-invalid' if form.next_followup_at.errors else ''),
+                                       placeholder='2026-01-31 10:30') }}
+              {% for e in form.next_followup_at.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label" for="{{ form.notes.id }}">Lead notes</label>
+            {{ form.notes(class_='form-control' + (' is-invalid' if form.notes.errors else ''), rows=4,
+                          placeholder='Context, requirements, objections…') }}
+            {% for e in form.notes.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+          </div>
+
+          <div class="d-flex gap-2">
+            {{ form.submit(class_='btn btn-primary') }}
+            <a class="btn btn-light" href="{{ url_for('leads.detail', lead_id=lead.id) if lead else url_for('leads.index') }}">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

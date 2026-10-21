@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% from "macros.html" import db_empty, db_pagination %}
+{% block page_title %}Customers{% endblock %}
+{% block page_sub %}Won accounts and their purchase history{% endblock %}
+{% block topbar_actions %}
+<a class="btn btn-primary btn-sm" href="{{ url_for('customers.create') }}">
+  <i class="bi bi-plus-lg me-1"></i>New customer
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="db-card mb-4">
+  <div class="db-card-body">
+    <form method="get" class="row g-2 align-items-end db-form">
+      <div class="col-md-5">
+        <label class="form-label" for="q">Search</label>
+        <input class="form-control" type="search" id="q" name="q"
+               value="{{ search }}" placeholder="Name, email, company or city">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label" for="segment">Segment</label>
+        <select class="form-select" id="segment" name="segment">
+          <option value="">All segments</option>
+          {% for s in segments %}
+          <option value="{{ s }}" {% if segment == s %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <button class="btn btn-primary w-100" type="submit">
+          <i class="bi bi-search me-1"></i>Filter
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="db-card">
+  <div class="db-card-body flush">
+    {% if customers %}
+    <div class="table-responsive">
+      <table class="db-table">
+        <thead>
+          <tr>
+            <th>Customer</th><th>Company</th><th>Segment</th>
+            <th class="text-end">Purchases</th><th class="text-end">Lifetime value</th>
+            <th>Last purchase</th><th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in customers %}
+          <tr>
+            <td>
+              <a class="db-cell-strong" href="{{ url_for('customers.detail', customer_id=c.id) }}">{{ c.name }}</a>
+              <div class="small text-muted">{{ c.email }}</div>
+            </td>
+            <td>{{ c.company or '—' }}</td>
+            <td><span class="db-chip bg-light text-dark border">{{ c.segment }}</span></td>
+            <td class="text-end">{{ c.total_purchases }}</td>
+            <td class="text-end fw-semibold">{{ c.lifetime_value|money }}</td>
+            <td>{{ c.last_purchase_at|dt('%b %d, %Y') if c.last_purchase_at else '—' }}</td>
+            <td class="text-end text-nowrap">
+              <a class="btn btn-sm btn-light btn-icon" href="{{ url_for('customers.detail', customer_id=c.id) }}" title="View"><i class="bi bi-eye"></i></a>
+              <a class="btn btn-sm btn-light btn-icon" href="{{ url_for('customers.edit', customer_id=c.id) }}" title="Edit"><i class="bi bi-pencil"></i></a>
+              <button class="btn btn-sm btn-light btn-icon text-danger" type="button"
+                      data-post="{{ url_for('customers.delete', customer_id=c.id) }}"
+                      data-confirm="Delete customer “{{ c.name }}”? Related leads will be unlinked."
+                      title="Delete"><i class="bi bi-trash"></i></button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="p-3">{{ db_pagination(pagination, 'customers.index') }}</div>
+    {% else %}
+    {{ db_empty('bi-people', 'No customers yet',
+                'Customers are created manually or by converting a lead. '
+                'Convert a qualified lead to see it appear here.',
+                url_for('customers.create'), 'Add a customer') }}
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block page_title %}{{ 'Edit sale #' ~ sale.id if sale else 'Record sale' }}{% endblock %}
+{% block page_sub %}Only completed sales count towards revenue{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="db-card">
+      <div class="db-card-body">
+        <form method="post" class="db-form" novalidate>
+          {{ form.hidden_tag() }}
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label db-required" for="{{ form.customer_id.id }}">Customer</label>
+              {{ form.customer_id(class_='form-select' + (' is-invalid' if form.customer_id.errors else '')) }}
+              {% for e in form.customer_id.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label db-required" for="{{ form.product_id.id }}">Product</label>
+              {{ form.product_id(class_='form-select' + (' is-invalid' if form.product_id.errors else '')) }}
+              {% for e in form.product_id.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-3 mb-3">
+              <label class="form-label db-required" for="{{ form.quantity.id }}">Quantity</label>
+              {{ form.quantity(class_='form-control' + (' is-invalid' if form.quantity.errors else '')) }}
+              {% for e in form.quantity.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+            </div>
+            <div class="col-md-3 mb-3">
+              <label class="form-label db-required" for="{{ form.amount.id }}">Unit amount</label>
+              {{ form.amount(class_='form-control' + (' is-invalid' if form.amount.errors else '')) }}
+              {% for e in form.amount.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+            </div>
+            <div class="col-md-3 mb-3">
+              <label class="form-label" for="{{ form.sold_at.id }}">Sale date</label>
+              {{ form.sold_at(class_='form-control', placeholder='YYYY-MM-DD') }}
+              <div class="form-text">Defaults to today.</div>
+            </div>
+            <div class="col-md-3 mb-3">
+              <label class="form-label db-required" for="{{ form.status.id }}">Status</label>
+              {{ form.status(class_='form-select') }}
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-4 mb-3">
+              <label class="form-label" for="{{ form.reference.id }}">Reference</label>
+              {{ form.reference(class_='form-control' + (' is-invalid' if form.reference.errors else ''),
+                                placeholder='INV-1001') }}
+              {% for e in form.reference.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+            </div>
+            <div class="col-md-8 mb-3">
+              <label class="form-label" for="{{ form.notes.id }}">Notes</label>
+              {{ form.notes(class_='form-control', rows=2) }}
+            </div>
+          </div>
+          <div class="d-flex gap-2">
+            {{ form.submit(class_='btn btn-primary') }}
+            <a class="btn btn-light" href="{{ url_for('sales.index') }}">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

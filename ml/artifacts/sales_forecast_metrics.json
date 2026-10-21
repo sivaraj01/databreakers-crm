@@ -1,0 +1,17 @@
+{
+  "model_type": "PolynomialFeatures(deg=2)+Ridge",
+  "task": "monthly_sales_forecast",
+  "trained_at": "2026-10-21 16:10:10 UTC",
+  "data_source": "sample",
+  "n_periods": 36,
+  "test_metrics": {
+    "mae": 8614.45,
+    "rmse": 16113.73,
+    "mape_percent": 17.4,
+    "r2": -1.1554,
+    "test_periods": 9,
+    "baseline_mae": 30818.66
+  },
+  "beats_naive_baseline": true,
+  "notes": "Split is time-aware: the newest months are held out. 'baseline_mae' is the error of a naive model that always predicts the training mean; the forecast is only informative if 'mae' is lower."
+}

@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block page_title %}Admin panel{% endblock %}
+{% block page_sub %}Business overview, users and audit trail{% endblock %}
+
+{% block content %}
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg-3">
+    <a href="{{ url_for('admin.users') }}" class="text-decoration-none">
+      <div class="db-stat">
+        <div class="db-stat-icon"><i class="bi bi-people"></i></div>
+        <div class="db-stat-label">Users</div>
+        <div class="db-stat-value">{{ user_count }}</div>
+        <div class="db-stat-note">{{ active_users }} active</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-6 col-lg-3">
+    <a href="{{ url_for('leads.index') }}" class="text-decoration-none">
+      <div class="db-stat db-stat-cyan">
+        <div class="db-stat-icon"><i class="bi bi-funnel"></i></div>
+        <div class="db-stat-label">Total leads</div>
+        <div class="db-stat-value">{{ metrics.total_leads }}</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-6 col-lg-3">
+    <a href="{{ url_for('customers.index') }}" class="text-decoration-none">
+      <div class="db-stat">
+        <div class="db-stat-icon"><i class="bi bi-people-fill"></i></div>
+        <div class="db-stat-label">Customers</div>
+        <div class="db-stat-value">{{ metrics.total_customers }}</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-6 col-lg-3">
+    <a href="{{ url_for('sales.index') }}" class="text-decoration-none">
+      <div class="db-stat db-stat-cyan">
+        <div class="db-stat-icon"><i class="bi bi-currency-dollar"></i></div>
+        <div class="db-stat-label">Revenue</div>
+        <div class="db-stat-value">{{ metrics.total_revenue|money }}</div>
+      </div>
+    </a>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-6">
+    <div class="db-card mb-4">
+      <div class="db-card-head"><h2 class="db-card-title">Quick actions</h2></div>
+      <div class="db-card-body">
+        <div class="d-grid gap-2">
+          <a class="btn btn-outline-purple" href="{{ url_for('admin.users') }}">
+            <i class="bi bi-person-gear me-1"></i>Manage users
+          </a>
+          <a class="btn btn-outline-purple" href="{{ url_for('admin.audit') }}">
+            <i class="bi bi-journal-text me-1"></i>Audit logs
+          </a>
+          <a class="btn btn-outline-purple" href="{{ url_for('admin.activity') }}">
+            <i class="bi bi-activity me-1"></i>Activity monitor
+          </a>
+          <a class="btn btn-outline-purple" href="{{ url_for('admin.settings') }}">
+            <i class="bi bi-sliders me-1"></i>Application settings
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div class="db-card">
+      <div class="db-card-head"><h2 class="db-card-title">Broadcast a notification</h2></div>
+      <div class="db-card-body">
+        <form method="post" action="{{ url_for('admin.broadcast') }}" class="db-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-2">
+            <label class="form-label" for="title">Title</label>
+            <input class="form-control" id="title" name="title" required maxlength="160">
+          </div>
+          <div class="mb-2">
+            <label class="form-label" for="body">Message</label>
+            <textarea class="form-control" id="body" name="body" rows="2" maxlength="500"></textarea>
+          </div>
+          <button class="btn btn-primary btn-sm" type="submit">
+            <i class="bi bi-send me-1"></i>Send to all active users
+          </button>
+          <div class="form-text mt-1">In-app only - email and WhatsApp are not configured.</div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="db-card">
+      <div class="db-card-head"><h2 class="db-card-title">Business snapshot</h2></div>
+      <div class="db-card-body">
+        <div class="db-metric-row"><span class="db-metric-label">Open leads</span>
+          <span class="db-metric-value">{{ metrics.open_leads }}</span></div>
+        <div class="db-metric-row"><span class="db-metric-label">Converted leads</span>
+          <span class="db-metric-value">{{ metrics.converted_leads }}</span></div>
+        <div class="db-metric-row"><span class="db-metric-label">Lost leads</span>
+          <span class="db-metric-value">{{ metrics.lost_leads }}</span></div>
+        <div class="db-metric-row"><span class="db-metric-label">Conversion rate</span>
+          <span class="db-metric-value">{{ metrics.conversion_rate }}%</span></div>
+        <div class="db-metric-row"><span class="db-metric-label">Average deal value</span>
+          <span class="db-metric-value">{{ metrics.avg_deal_value|money }}</span></div>
+        <div class="db-metric-row"><span class="db-metric-label">Pending follow-ups</span>
+          <span class="db-metric-value">{{ pending_followups }}</span></div>
+        <div class="db-metric-row"><span class="db-metric-label">Overdue follow-ups</span>
+          <span class="db-metric-value">{{ metrics.overdue_followups }}</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

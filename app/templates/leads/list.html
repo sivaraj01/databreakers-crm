@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% from "macros.html" import db_empty, db_pagination, status_pill %}
+{% block page_title %}Leads{% endblock %}
+{% block page_sub %}Every prospect in your pipeline{% endblock %}
+{% block topbar_actions %}
+<a class="btn btn-primary btn-sm" href="{{ url_for('leads.create') }}">
+  <i class="bi bi-plus-lg me-1"></i>New lead
+</a>
+{% endblock %}
+
+{% block content %}
+{# ---------- filter bar ---------- #}
+<div class="db-card mb-4">
+  <div class="db-card-body">
+    <form method="get" class="row g-2 align-items-end db-form">
+      <div class="col-md-4">
+        <label class="form-label" for="q">Search</label>
+        <input class="form-control" type="search" id="q" name="q"
+               value="{{ search }}" placeholder="Name, email, company or phone">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label" for="status">Status</label>
+        <select class="form-select" id="status" name="status">
+          <option value="">All statuses</option>
+          {% for value, label in statuses %}
+          <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label" for="source">Source</label>
+        <select class="form-select" id="source" name="source">
+          <option value="">All sources</option>
+          {% for value, label in sources %}
+          <option value="{{ value }}" {% if source == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label" for="sort">Sort by</label>
+        <select class="form-select" id="sort" name="sort">
+          {% for value, label in [('newest','Newest first'),('oldest','Oldest first'),
+                                  ('name','Name A–Z'),('status','Status'),
+                                  ('value','Deal value'),('followup','Next follow-up')] %}
+          <option value="{{ value }}" {% if sort == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2 d-flex gap-2">
+        <button class="btn btn-primary w-100" type="submit">
+          <i class="bi bi-funnel me-1"></i>Filter
+        </button>
+      </div>
+    </form>
+
+    {% if status_counts %}
+    <div class="d-flex flex-wrap gap-2 mt-3">
+      {% for s, n in status_counts.items() %}
+      <a class="db-chip bg-light text-dark border"
+         href="{{ url_for('leads.index', status=s) }}">{{ s }} · {{ n }}</a>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{# ---------- table ---------- #}
+<div class="db-card">
+  <div class="db-card-body flush">
+    {% if leads %}
+    <div class="table-responsive">
+      <table class="db-table">
+        <thead>
+          <tr>
+            <th>Lead</th><th>Company</th><th>Status</th><th>Source</th>
+            <th class="text-end">Deal value</th><th>Assigned to</th>
+            <th>Next follow-up</th><th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for lead in leads %}
+          <tr>
+            <td>
+              <a class="db-cell-strong" href="{{ url_for('leads.detail', lead_id=lead.id) }}">{{ lead.name }}</a>
+              <div class="small text-muted">{{ lead.email }}</div>
+            </td>
+            <td>{{ lead.company or '—' }}</td>
+            <td>{{ status_pill(lead.status) }}</td>
+            <td><span class="small">{{ lead.source }}</span></td>
+            <td class="text-end">{{ lead.expected_value|money }}</td>
+            <td>{{ lead.assignee.name if lead.assignee else '—' }}</td>
+            <td>
+              {% if lead.next_followup_at %}
+                <span class="{% if lead.is_overdue %}text-danger fw-semibold{% endif %}">
+                  {{ lead.next_followup_at|dt }}
+                </span>
+              {% else %}—{% endif %}
+            </td>
+            <td class="text-end text-nowrap">
+              <a class="btn btn-sm btn-light btn-icon"
+                 href="{{ url_for('leads.detail', lead_id=lead.id) }}"
+                 title="View"><i class="bi bi-eye"></i></a>
+              <a class="btn btn-sm btn-light btn-icon"
+                 href="{{ url_for('leads.edit', lead_id=lead.id) }}"
+                 title="Edit"><i class="bi bi-pencil"></i></a>
+              <button class="btn btn-sm btn-light btn-icon text-danger"
+                      type="button" data-post="{{ url_for('leads.delete', lead_id=lead.id) }}"
+                      data-confirm="Delete lead “{{ lead.name }}”? This cannot be undone."
+                      title="Delete"><i class="bi bi-trash"></i></button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="p-3">{{ db_pagination(pagination, 'leads.index') }}</div>
+    {% else %}
+    {{ db_empty('bi-funnel', 'No leads found',
+                'No lead matches your filters. Clear them, or add a new lead to start building your pipeline.',
+                url_for('leads.create'), 'Add a lead') }}
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,27 @@
+# Files excluded from the Vercel deployment bundle.
+# Everything the Flask app needs at runtime (app/, ml/artifacts/, config.py)
+# is intentionally NOT listed here.
+
+# Not installed on the serverless runtime
+.env
+.env.*
+*.md
+docs/
+instance/
+__pycache__/
+**/__pycache__/
+.pytest_cache/
+.git/
+.gitignore
+
+# Local-only tooling
+tests/
+.vscode/
+.idea/
+
+# Training code is not needed to *serve* predictions; the fitted artifacts
+# in ml/artifacts/ are what the app loads.
+scripts/generate_samples.py
+ml/preprocessing.py
+ml/train_lead_model.py
+ml/train_sales_model.py

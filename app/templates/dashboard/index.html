@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+{% from "macros.html" import db_empty, status_pill %}
+{% block page_title %}Dashboard{% endblock %}
+{% block page_sub %}Live figures computed from your database{% endblock %}
+{% block topbar_actions %}
+<a class="btn btn-primary btn-sm" href="{{ url_for('leads.create') }}">
+  <i class="bi bi-plus-lg me-1"></i>New lead
+</a>
+{% endblock %}
+
+{% block content %}
+{# ---------- KPI cards ---------- #}
+<div class="row g-3 mb-4">
+  {% set cards = [
+    ('Total leads', summary.total_leads, 'bi-funnel', ''),
+    ('Customers', summary.total_customers, 'bi-people', 'db-stat-cyan'),
+    ('New leads', summary.new_leads, 'bi-person-plus', ''),
+    ('Converted', summary.converted_leads, 'bi-check2-circle', 'db-stat-cyan'),
+    ('Lost', summary.lost_leads, 'bi-x-octagon', ''),
+    ('Follow-ups today', summary.followups_due_today, 'bi-calendar-check', 'db-stat-cyan'),
+    ('Conversion rate', summary.conversion_rate ~ '%', 'bi-graph-up-arrow', ''),
+    ('Revenue', summary.total_revenue|money, 'bi-currency-dollar', 'db-stat-cyan'),
+  ] %}
+  {% for label, value, icon, tone in cards %}
+  <div class="col-6 col-md-4 col-xl-3">
+    <div class="db-stat {{ tone }}">
+      <div class="db-stat-icon"><i class="bi {{ icon }}"></i></div>
+      <div class="db-stat-label">{{ label }}</div>
+      <div class="db-stat-value">{{ value }}</div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{# ---------- Empty state ---------- #}
+{% if not has_data %}
+<div class="db-card mb-4">
+  <div class="db-card-body">
+    {{ db_empty('bi-rocket', 'Welcome to DataBreakers CRM',
+                'Your dashboard is empty because there is no data yet. '
+                'Create a lead, or load the demo dataset with '
+                'python scripts/seed_demo_data.py to see the charts come alive.',
+                url_for('leads.create'), 'Create your first lead') }}
+  </div>
+</div>
+{% endif %}
+
+{% if summary.overdue_followups %}
+<div class="alert alert-warning d-flex align-items-center gap-2 mb-4" role="alert">
+  <i class="bi bi-exclamation-triangle-fill"></i>
+  <div>
+    You have <strong>{{ summary.overdue_followups }}</strong> overdue follow-up(s).
+    <a href="{{ url_for('followups.index', scope='overdue') }}">Review them now</a>.
+  </div>
+</div>
+{% endif %}
+
+{# ---------- Charts row 1 ---------- #}
+<div class="row g-3 mb-4">
+  <div class="col-lg-8">
+    <div class="db-card h-100">
+      <div class="db-card-head"><h2 class="db-card-title">Monthly lead generation</h2></div>
+      <div class="db-card-body">
+        <div class="db-chart-wrap"><canvas id="chartLeads"></canvas></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="db-card h-100">
+      <div class="db-card-head"><h2 class="db-card-title">Lead status</h2></div>
+      <div class="db-card-body">
+        <div class="db-chart-wrap"><canvas id="chartStatus"></canvas></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ---------- Charts row 2 ---------- #}
+<div class="row g-3 mb-4">
+  <div class="col-lg-6">
+    <div class="db-card h-100">
+      <div class="db-card-head"><h2 class="db-card-title">Monthly revenue</h2></div>
+      <div class="db-card-body">
+        <div class="db-chart-wrap"><canvas id="chartRevenue"></canvas></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="db-card h-100">
+      <div class="db-card-head"><h2 class="db-card-title">Customer growth</h2></div>
+      <div class="db-card-body">
+        <div class="db-chart-wrap"><canvas id="chartGrowth"></canvas></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-lg-6">
+    <div class="db-card h-100">
+      <div class="db-card-head"><h2 class="db-card-title">Lead conversion trend</h2></div>
+      <div class="db-card-body">
+        <div class="db-chart-wrap sm"><canvas id="chartConversion"></canvas></div>
+        <p class="text-muted small mb-0 mt-2">
+          Converted leads ÷ leads created that month × 100.
+        </p>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="db-card h-100">
+      <div class="db-card-head"><h2 class="db-card-title">Product performance</h2></div>
+      <div class="db-card-body">
+        {% if chart_products.labels %}
+        <div class="db-chart-wrap"><canvas id="chartProducts"></canvas></div>
+        {% else %}
+        {{ db_empty('bi-box-seam', 'No product revenue yet',
+                    'Record a sale against a product to see its performance here.',
+                    url_for('sales.create'), 'Record a sale') }}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ---------- Secondary metrics + activity ---------- #}
+<div class="row g-3">
+  <div class="col-lg-4">
+    <div class="db-card h-100">
+      <div class="db-card-head"><h2 class="db-card-title">More metrics</h2></div>
+      <div class="db-card-body">
+        <div class="db-metric-row">
+          <span class="db-metric-label">Open leads</span>
+          <span class="db-metric-value">{{ summary.open_leads }}</span>
+        </div>
+        <div class="db-metric-row">
+          <span class="db-metric-label">Acquisition rate</span>
+          <span class="db-metric-value">{{ summary.acquisition_rate }}%</span>
+        </div>
+        <div class="db-metric-row">
+          <span class="db-metric-label">Average deal value</span>
+          <span class="db-metric-value">{{ summary.avg_deal_value|money }}</span>
+        </div>
+        <div class="db-metric-row">
+          <span class="db-metric-label">Overdue follow-ups</span>
+          <span class="db-metric-value">{{ summary.overdue_followups }}</span>
+        </div>
+        <p class="text-muted small mt-3 mb-0">
+          Acquisition rate counts every lead; conversion rate counts only decided leads.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-8">
+    <div class="db-card h-100">
+      <div class="db-card-head">
+        <h2 class="db-card-title">Recent activity</h2>
+        <a class="small" href="{{ url_for('dashboard.activity') }}">View all</a>
+      </div>
+      <div class="db-card-body">
+        {% if activities %}
+        <div class="db-timeline">
+          {% for a in activities %}
+          <div class="db-timeline-item">
+            <div class="db-timeline-when">{{ a.created_at|dt }} · {{ a.user.name if a.user else 'System' }}</div>
+            <div>{{ a.summary }}</div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        {{ db_empty('bi-activity', 'No activity yet',
+                    'Actions you and your team take will appear here as a timeline.') }}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  "use strict";
+  var leads = {{ chart_leads|tojson }};
+  var status = {{ chart_status|tojson }};
+  var revenue = {{ chart_revenue|tojson }};
+  var growth = {{ chart_growth|tojson }};
+  var conversion = {{ chart_conversion|tojson }};
+  var products = {{ chart_products|tojson }};
+
+  var purple = "#8b5cf6", cyan = "#22d3ee";
+
+  dbChart("chartLeads", {
+    type: "bar",
+    data: { labels: leads.labels, datasets: [{
+      label: "Leads", data: leads.values,
+      backgroundColor: window.dbGradient(
+        document.getElementById("chartLeads"), purple),
+      borderRadius: 6, borderSkipped: false
+    }]},
+    options: { scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+  });
+
+  var statusColors = ["#22d3ee", "#8b5cf6", "#f59e0b", "#10b981", "#6366f1", "#ef4444"];
+  dbChart("chartStatus", {
+    type: "doughnut",
+    data: { labels: status.labels, datasets: [{
+      data: status.values,
+      backgroundColor: status.labels.map(function (_, i) { return statusColors[i % statusColors.length]; }),
+      borderWidth: 2, borderColor: "#fff"
+    }]},
+    options: {
+      cutout: "62%",
+      plugins: { legend: { position: "bottom", labels: { boxWidth: 12, padding: 12 } } }
+    }
+  });
+
+  dbChart("chartRevenue", {
+    type: "line",
+    data: { labels: revenue.labels, datasets: [{
+      label: "Revenue", data: revenue.values,
+      borderColor: cyan, fill: true,
+      backgroundColor: window.dbGradient(
+        document.getElementById("chartRevenue"), cyan),
+      tension: .35, pointRadius: 3, pointBackgroundColor: cyan
+    }]},
+    options: { scales: { y: { beginAtZero: true } } }
+  });
+
+  dbChart("chartGrowth", {
+    type: "line",
+    data: { labels: growth.labels, datasets: [{
+      label: "Customers", data: growth.values,
+      borderColor: purple, fill: true,
+      backgroundColor: window.dbGradient(
+        document.getElementById("chartGrowth"), purple),
+      tension: .35, pointRadius: 3, pointBackgroundColor: purple
+    }]},
+    options: { scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+  });
+
+  dbChart("chartConversion", {
+    type: "line",
+    data: { labels: conversion.labels, datasets: [{
+      label: "Conversion %", data: conversion.values,
+      borderColor: purple, backgroundColor: "rgba(139,92,246,.15)",
+      fill: true, tension: .35
+    }]},
+    options: { scales: { y: { beginAtZero: true, suggestedMax: 100 } } }
+  });
+
+  if (products.labels.length) {
+    dbChart("chartProducts", {
+      type: "bar",
+      data: { labels: products.labels, datasets: [{
+        label: "Revenue", data: products.values,
+        backgroundColor: products.labels.map(function (_, i) {
+          return i % 2 ? cyan : purple; }),
+        borderRadius: 6, borderSkipped: false
+      }]},
+      options: {
+        indexAxis: "y",
+        scales: { x: { beginAtZero: true } }
+      }
+    });
+  }
+})();
+</script>
+{% endblock %}

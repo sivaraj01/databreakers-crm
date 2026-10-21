@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% from "macros.html" import db_pagination %}
+{% block page_title %}Activity{% endblock %}
+{% block page_sub %}Timeline of actions taken in the CRM{% endblock %}
+{% block content %}
+<div class="db-card">
+  <div class="db-card-body">
+    {% if activities %}
+    <div class="db-timeline">
+      {% for a in activities %}
+      <div class="db-timeline-item">
+        <div class="db-timeline-when">
+          {{ a.created_at|dt }} · {{ a.user.name if a.user else 'System' }} · {{ a.entity_type }}
+        </div>
+        <div>{{ a.summary }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    {{ db_pagination(pagination, 'dashboard.activity') }}
+    {% else %}
+    <div class="db-empty">
+      <div class="db-empty-icon"><i class="bi bi-activity"></i></div>
+      <h5>No activity recorded yet</h5>
+      <p>As soon as you and your team create leads, log calls or record sales,
+         the timeline fills up here.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

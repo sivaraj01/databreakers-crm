@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% from "macros.html" import db_empty %}
+{% block page_title %}Predictions{% endblock %}
+{% block page_sub %}Machine-learning estimates, honestly labelled with their evaluation metrics{% endblock %}
+
+{% block content %}
+{# ---------- lead conversion model ---------- #}
+<div class="db-card mb-4">
+  <div class="db-card-head">
+    <h2 class="db-card-title">Lead conversion prediction</h2>
+    {% if lead_status.available %}
+    <span class="db-chip bg-success bg-opacity-10 text-success">Trained</span>
+    {% else %}
+    <span class="db-chip bg-warning bg-opacity-10 text-warning">Not trained</span>
+    {% endif %}
+  </div>
+  <div class="db-card-body">
+    {% if lead_status.available %}
+    <div class="row g-3 mb-3">
+      <div class="col-md-3">
+        <div class="db-section-title">Method</div>
+        <div class="fw-semibold">{{ lead_status.method }}</div>
+      </div>
+      <div class="col-md-3">
+        <div class="db-section-title">Trained on</div>
+        <div class="fw-semibold">{{ lead_status.n_training_rows }} rows</div>
+      </div>
+      <div class="col-md-3">
+        <div class="db-section-title">Trained at</div>
+        <div class="fw-semibold">{{ lead_status.trained_at }}</div>
+      </div>
+    </div>
+
+    {% if lead_status.metrics %}
+    <div class="db-section-title">Held-out test metrics</div>
+    <div class="row g-2 mb-3">
+      {% for name, value in lead_status.metrics.items() %}
+      <div class="col-6 col-md-3">
+        <div class="db-stat">
+          <div class="db-stat-label">{{ name }}</div>
+          <div class="db-stat-value" style="font-size:1.2rem">{{ value }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if lead_status.features %}
+    <div class="db-section-title">Features used</div>
+    <p class="small text-muted">{{ lead_status.features|join(', ') }}</p>
+    {% endif %}
+
+    {% if lead_status.limitations %}
+    <div class="alert alert-light border mb-0">
+      <div class="db-section-title">Limitations</div>
+      <ul class="small mb-0 ps-3">
+        {% for l in lead_status.limitations %}<li>{{ l }}</li>{% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+    {% else %}
+    {{ db_empty('bi-cpu', 'Model not trained',
+                lead_status.message, '', '') }}
+    <div class="text-center">
+      <code class="db-formula">{{ lead_status.message.split(': ')[-1] if ': ' in lead_status.message else 'python ml/train_lead_model.py' }}</code>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{# ---------- sales forecast ---------- #}
+<div class="db-card">
+  <div class="db-card-head">
+    <h2 class="db-card-title">Sales forecast</h2>
+    {% if sales_status.available %}
+    <span class="db-chip bg-success bg-opacity-10 text-success">Trained</span>
+    {% else %}
+    <span class="db-chip bg-warning bg-opacity-10 text-warning">Not trained</span>
+    {% endif %}
+  </div>
+  <div class="db-card-body">
+    {% if forecast.available %}
+    <div class="db-chart-wrap mb-3"><canvas id="forecastChart"></canvas></div>
+    <div class="row g-3 mb-3">
+      <div class="col-md-4">
+        <div class="db-section-title">Method</div>
+        <div class="fw-semibold">{{ sales_status.method }}</div>
+      </div>
+      <div class="col-md-4">
+        <div class="db-section-title">Periods trained</div>
+        <div class="fw-semibold">{{ sales_status.n_training_rows }}</div>
+      </div>
+      <div class="col-md-4">
+        <div class="db-section-title">Trained at</div>
+        <div class="fw-semibold">{{ sales_status.trained_at }}</div>
+      </div>
+    </div>
+    {% if sales_status.metrics %}
+    <div class="db-section-title">Held-out test metrics</div>
+    <div class="row g-2 mb-3">
+      {% for name, value in sales_status.metrics.items() %}
+      <div class="col-6 col-md-3">
+        <div class="db-stat db-stat-cyan">
+          <div class="db-stat-label">{{ name }}</div>
+          <div class="db-stat-value" style="font-size:1.2rem">{{ value }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% if sales_status.limitations %}
+    <div class="alert alert-light border mb-0">
+      <div class="db-section-title">Limitations</div>
+      <ul class="small mb-0 ps-3">
+        {% for l in sales_status.limitations %}<li>{{ l }}</li>{% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+    {% else %}
+    {{ db_empty('bi-graph-up', 'Forecast not available', sales_status.message) }}
+    <div class="text-center">
+      <code class="db-formula">{{ sales_status.message.split(': ')[-1] if ': ' in sales_status.message else 'python ml/train_sales_model.py' }}</code>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if forecast.available %}
+<script>
+dbChart("forecastChart", {
+  type: "line",
+  data: {
+    labels: {{ (forecast.history_labels + forecast.forecast_labels)|tojson }},
+    datasets: [
+      {
+        label: "Actual revenue",
+        data: {{ forecast.history_values|tojson }},
+        borderColor: "#8b5cf6", backgroundColor: "rgba(139,92,246,.15)",
+        fill: true, tension: .3
+      },
+      {
+        label: "Forecast",
+        data: {{ ([None] * (forecast.history_values|length) + forecast.forecast_values)|tojson }},
+        borderColor: "#22d3ee", borderDash: [6, 4],
+        backgroundColor: "rgba(34,211,238,.12)", fill: true, tension: .3
+      }
+    ]
+  },
+  options: {
+    scales: { y: { beginAtZero: true } },
+    plugins: { legend: { display: true, position: "bottom" } }
+  }
+});
+</script>
+{% endif %}
+{% endblock %}

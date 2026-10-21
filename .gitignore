@@ -1,0 +1,33 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment secrets
+.env
+
+# Local database + logs
+*.db
+*.sqlite3
+instance/
+logs/*.log
+
+# ML artifacts: the fitted models and their evaluation reports are committed
+# (a few KB each) so a fresh clone or deployment can serve predictions
+# straight away instead of reporting "not trained". Regenerate them any time
+# with:  python ml/train_lead_model.py  and  python ml/train_sales_model.py
+!ml/artifacts/*.pkl
+!ml/artifacts/*.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

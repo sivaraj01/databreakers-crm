@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% from "macros.html" import db_empty, db_pagination, status_pill %}
+{% block page_title %}Sales{% endblock %}
+{% block page_sub %}Booked transactions - expected deal value is never counted here{% endblock %}
+{% block topbar_actions %}
+<a class="btn btn-primary btn-sm" href="{{ url_for('sales.create') }}">
+  <i class="bi bi-plus-lg me-1"></i>Record sale
+</a>
+<a class="btn btn-outline-purple btn-sm" href="{{ url_for('sales.export_csv', start=start or '', end=end or '', status=status) }}">
+  <i class="bi bi-download me-1"></i>CSV
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg-3">
+    <div class="db-stat db-stat-cyan">
+      <div class="db-stat-icon"><i class="bi bi-currency-dollar"></i></div>
+      <div class="db-stat-label">Total revenue</div>
+      <div class="db-stat-value">{{ total_revenue|money }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="db-stat">
+      <div class="db-stat-icon"><i class="bi bi-calendar-month"></i></div>
+      <div class="db-stat-label">This month</div>
+      <div class="db-stat-value">{{ monthly_revenue|money }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="db-stat db-stat-cyan">
+      <div class="db-stat-icon"><i class="bi bi-graph-up"></i></div>
+      <div class="db-stat-label">Average deal</div>
+      <div class="db-stat-value">{{ avg_deal|money }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="db-stat">
+      <div class="db-stat-icon"><i class="bi bi-check2-circle"></i></div>
+      <div class="db-stat-label">Completed sales</div>
+      <div class="db-stat-value">{{ completed_count }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="db-card mb-4">
+  <div class="db-card-head"><h2 class="db-card-title">Revenue trend (12 months)</h2></div>
+  <div class="db-card-body">
+    <div class="db-chart-wrap sm"><canvas id="salesTrend"></canvas></div>
+  </div>
+</div>
+
+<div class="db-card mb-4">
+  <div class="db-card-body">
+    <form method="get" class="row g-2 align-items-end db-form">
+      <div class="col-md-3">
+        <label class="form-label" for="status">Status</label>
+        <select class="form-select" id="status" name="status">
+          <option value="">All</option>
+          {% for value, label in statuses %}
+          <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label" for="start">From</label>
+        <input class="form-control" type="date" id="start" name="start"
+               value="{{ start.isoformat() if start else '' }}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label" for="end">To</label>
+        <input class="form-control" type="date" id="end" name="end"
+               value="{{ end.isoformat() if end else '' }}">
+      </div>
+      <div class="col-md-3 d-flex gap-2">
+        <button class="btn btn-primary" type="submit"><i class="bi bi-funnel me-1"></i>Filter</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="db-card">
+  <div class="db-card-body flush">
+    {% if sales %}
+    <div class="table-responsive">
+      <table class="db-table">
+        <thead>
+          <tr><th>Reference</th><th>Customer</th><th>Product</th>
+              <th class="text-end">Qty</th><th class="text-end">Total</th>
+              <th>Status</th><th>Date</th><th>Recorded by</th><th class="text-end">Actions</th></tr>
+        </thead>
+        <tbody>
+          {% for s in sales %}
+          <tr>
+            <td>{{ s.reference or '#' ~ s.id }}</td>
+            <td>
+              {% if s.customer %}
+              <a href="{{ url_for('customers.detail', customer_id=s.customer_id) }}">{{ s.customer.name }}</a>
+              {% else %}—{% endif %}
+            </td>
+            <td>{{ s.product.name if s.product else '—' }}</td>
+            <td class="text-end">{{ s.quantity }}</td>
+            <td class="text-end fw-semibold">{{ s.total|money }}</td>
+            <td>{{ status_pill(s.status) }}</td>
+            <td class="text-nowrap">{{ s.sold_at|dt('%b %d, %Y') }}</td>
+            <td>{{ s.recorder.name if s.recorder else '—' }}</td>
+            <td class="text-end text-nowrap">
+              <a class="btn btn-sm btn-light btn-icon" href="{{ url_for('sales.edit', sale_id=s.id) }}" title="Edit"><i class="bi bi-pencil"></i></a>
+              {% if current_user.is_admin %}
+              <button class="btn btn-sm btn-light btn-icon text-danger" type="button"
+                      data-post="{{ url_for('sales.delete', sale_id=s.id) }}"
+                      data-confirm="Delete sale #{{ s.id }} ({{ s.total|money }})?"
+                      title="Delete"><i class="bi bi-trash"></i></button>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="p-3">{{ db_pagination(pagination, 'sales.index') }}</div>
+    {% else %}
+    {{ db_empty('bi-cart', 'No sales recorded',
+                'Record a sale to start tracking revenue, product performance and trends.',
+                url_for('sales.create'), 'Record a sale') }}
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+dbChart("salesTrend", {
+  type: "line",
+  data: { labels: {{ trend['labels']|tojson }}, datasets: [{
+    label: "Revenue", data: {{ trend['values']|tojson }},
+    borderColor: "#22d3ee", fill: true,
+    backgroundColor: window.dbGradient(
+      document.getElementById("salesTrend"), "#22d3ee"),
+    tension: .35, pointRadius: 3
+  }]},
+  options: { scales: { y: { beginAtZero: true } } }
+});
+</script>
+{% endblock %}

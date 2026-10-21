@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% from "macros.html" import db_empty %}
+{% block page_title %}Follow-ups{% endblock %}
+{% block page_sub %}Overdue, due today and upcoming touch-points{% endblock %}
+{% block topbar_actions %}
+<a class="btn btn-primary btn-sm" href="{{ url_for('followups.create') }}">
+  <i class="bi bi-plus-lg me-1"></i>Schedule
+</a>
+{% endblock %}
+
+{% block content %}
+{# ---------- summary strip ---------- #}
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg-3">
+    <a href="?scope=overdue" class="text-decoration-none">
+      <div class="db-stat">
+        <div class="db-stat-icon"><i class="bi bi-exclamation-triangle"></i></div>
+        <div class="db-stat-label">Overdue</div>
+        <div class="db-stat-value">{{ buckets.overdue|length }}</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-6 col-lg-3">
+    <a href="?scope=today" class="text-decoration-none">
+      <div class="db-stat db-stat-cyan">
+        <div class="db-stat-icon"><i class="bi bi-calendar-day"></i></div>
+        <div class="db-stat-label">Due today</div>
+        <div class="db-stat-value">{{ buckets.today|length }}</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-6 col-lg-3">
+    <a href="?scope=upcoming" class="text-decoration-none">
+      <div class="db-stat">
+        <div class="db-stat-icon"><i class="bi bi-calendar-week"></i></div>
+        <div class="db-stat-label">Upcoming (14d)</div>
+        <div class="db-stat-value">{{ buckets.upcoming|length }}</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-6 col-lg-3">
+    <a href="?scope=completed" class="text-decoration-none">
+      <div class="db-stat db-stat-cyan">
+        <div class="db-stat-icon"><i class="bi bi-check2-circle"></i></div>
+        <div class="db-stat-label">Completed</div>
+        <div class="db-stat-value">{{ buckets.completed|length }}</div>
+      </div>
+    </a>
+  </div>
+</div>
+
+{% macro followup_table(rows, show_actions) -%}
+  {% if rows %}
+  <div class="table-responsive">
+    <table class="db-table">
+      <thead>
+        <tr><th>When</th><th>Type</th><th>Subject</th><th>Assigned to</th>
+            <th>Notes</th><th class="text-end">Actions</th></tr>
+      </thead>
+      <tbody>
+        {% for f in rows %}
+        <tr>
+          <td class="text-nowrap">
+            <span class="{% if f.due_state == 'overdue' %}text-danger fw-semibold{% endif %}">
+              {{ f.due_at|dt }}
+            </span>
+            {% if f.due_state == 'overdue' %}
+            <span class="db-chip bg-danger bg-opacity-10 text-danger ms-1">overdue</span>
+            {% elif f.due_state == 'today' %}
+            <span class="db-chip bg-info bg-opacity-10 text-info ms-1">today</span>
+            {% endif %}
+          </td>
+          <td>{{ f.kind }}</td>
+          <td>
+            {% if f.lead %}
+              <a href="{{ url_for('leads.detail', lead_id=f.lead_id) }}">{{ f.lead.name }}</a>
+            {% elif f.customer %}
+              <a href="{{ url_for('customers.detail', customer_id=f.customer_id) }}">{{ f.customer.name }}</a>
+            {% else %}General{% endif %}
+          </td>
+          <td>{{ f.assignee.name if f.assignee else '—' }}</td>
+          <td class="small text-muted">{{ (f.notes or f.outcome or '—')|truncate(60) }}</td>
+          <td class="text-end text-nowrap">
+            {% if f.status == 'Pending' %}
+            <form method="post" action="{{ url_for('followups.complete', followup_id=f.id) }}"
+                  class="d-inline db-form" data-loading="1">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="outcome" value="Completed from the follow-up list.">
+              <button class="btn btn-sm btn-cyan btn-icon" type="submit" title="Mark completed">
+                <i class="bi bi-check2"></i>
+              </button>
+            </form>
+            <button class="btn btn-sm btn-light btn-icon" type="button"
+                    data-reschedule-toggle title="Reschedule"><i class="bi bi-clock-history"></i></button>
+            <button class="btn btn-sm btn-light btn-icon text-danger" type="button"
+                    data-post="{{ url_for('followups.cancel', followup_id=f.id) }}"
+                    data-confirm="Cancel this follow-up?"
+                    title="Cancel"><i class="bi bi-x"></i></button>
+            {% else %}
+            <span class="db-chip bg-light text-dark border">{{ f.status }}</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% if f.status == 'Pending' %}
+        <tr>
+          <td colspan="6" class="bg-light">
+            <form method="post" action="{{ url_for('followups.reschedule', followup_id=f.id) }}"
+                  class="row g-2 align-items-center db-form">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <div class="col-auto small text-muted">Reschedule to:</div>
+              <div class="col-auto">
+                <input type="datetime-local" class="form-control form-control-sm"
+                       name="due_at" style="display:none">
+              </div>
+              <div class="col-auto">
+                <button class="btn btn-sm btn-outline-purple" type="submit">Save new time</button>
+              </div>
+            </form>
+          </td>
+        </tr>
+        {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  {{ db_empty('bi-calendar-check', 'Nothing here', 'No follow-ups in this bucket right now.') }}
+  {% endif %}
+{%- endmacro %}
+
+{% set scope_tabs = [('overdue','Overdue',buckets.overdue),
+                     ('today','Due today',buckets.today),
+                     ('upcoming','Upcoming',buckets.upcoming),
+                     ('completed','Completed',buckets.completed)] %}
+
+<div class="db-card">
+  <div class="db-card-body">
+    <ul class="nav nav-pills mb-3" role="tablist">
+      {% for key, label, rows in scope_tabs %}
+      <li class="nav-item">
+        <button class="nav-link {% if scope == key %}active{% endif %}"
+                data-bs-toggle="pill" data-bs-target="#tab-{{ key }}" type="button">
+          {{ label }} <span class="db-chip bg-white bg-opacity-25 text-reset ms-1">{{ rows|length }}</span>
+        </button>
+      </li>
+      {% endfor %}
+    </ul>
+    <div class="tab-content">
+      {% for key, label, rows in scope_tabs %}
+      <div class="tab-pane fade {% if scope == key %}show active{% endif %}" id="tab-{{ key }}">
+        {{ followup_table(rows, key != 'completed') }}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

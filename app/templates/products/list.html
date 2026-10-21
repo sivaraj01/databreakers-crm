@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% from "macros.html" import db_empty %}
+{% block page_title %}Products{% endblock %}
+{% block page_sub %}Catalogue and revenue per product{% endblock %}
+{% block topbar_actions %}
+{% if current_user.is_admin %}
+<a class="btn btn-primary btn-sm" href="{{ url_for('products.create') }}">
+  <i class="bi bi-plus-lg me-1"></i>New product
+</a>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="db-card mb-4">
+  <div class="db-card-body">
+    <div class="db-metric-row">
+      <span class="db-metric-label">Total product revenue (completed sales)</span>
+      <span class="db-metric-value fs-5">{{ total_revenue|money }}</span>
+    </div>
+  </div>
+</div>
+
+<div class="db-card">
+  <div class="db-card-body flush">
+    {% if rows %}
+    <div class="table-responsive">
+      <table class="db-table">
+        <thead>
+          <tr><th>Product</th><th>SKU</th><th>Category</th>
+              <th class="text-end">Price</th><th class="text-end">Units sold</th>
+              <th class="text-end">Revenue</th><th>Status</th>
+              {% if current_user.is_admin %}<th class="text-end">Actions</th>{% endif %}</tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+          {% set p = row.product %}
+          <tr>
+            <td class="fw-semibold">{{ p.name }}</td>
+            <td>{{ p.sku or '—' }}</td>
+            <td><span class="db-chip bg-light text-dark border">{{ p.category }}</span></td>
+            <td class="text-end">{{ p.price|money }}</td>
+            <td class="text-end">{{ row.units }}</td>
+            <td class="text-end fw-semibold">{{ row.revenue|money }}</td>
+            <td>
+              {% if p.is_active %}
+              <span class="db-chip bg-success bg-opacity-10 text-success">Active</span>
+              {% else %}
+              <span class="db-chip bg-secondary bg-opacity-10 text-secondary">Inactive</span>
+              {% endif %}
+            </td>
+            {% if current_user.is_admin %}
+            <td class="text-end text-nowrap">
+              <a class="btn btn-sm btn-light btn-icon" href="{{ url_for('products.edit', product_id=p.id) }}" title="Edit"><i class="bi bi-pencil"></i></a>
+              <button class="btn btn-sm btn-light btn-icon text-danger" type="button"
+                      data-post="{{ url_for('products.delete', product_id=p.id) }}"
+                      data-confirm="Delete product “{{ p.name }}”? Products with sales are archived instead."
+                      title="Delete"><i class="bi bi-trash"></i></button>
+            </td>
+            {% endif %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    {{ db_empty('bi-box-seam', 'No products yet',
+                'Add the products you sell so sales can be attributed and performance compared.',
+                url_for('products.create') if current_user.is_admin else '',
+                'Add a product') }}
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

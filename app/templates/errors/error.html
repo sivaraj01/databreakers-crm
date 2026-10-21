@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block topbar %}{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center justify-content-center" style="min-height:70vh">
+  <div class="db-card" style="max-width:460px;width:100%">
+    <div class="db-card-body text-center p-4">
+      <div class="db-empty-icon mx-auto mb-3">
+        <i class="bi {% if code == 404 %}bi-compass{% elif code == 403 %}bi-shield-lock{% else %}bi-exclamation-octagon{% endif %}"></i>
+      </div>
+      <h1 class="display-5 fw-bold mb-1">{{ code }}</h1>
+      <h2 class="h5 fw-semibold">{{ title }}</h2>
+      <p class="text-muted mb-4">{{ message }}</p>
+      <div class="d-flex gap-2 justify-content-center">
+        <a class="btn btn-primary" href="{{ url_for('dashboard.index') }}">
+          <i class="bi bi-grid-1x2 me-1"></i>Back to dashboard
+        </a>
+        <a class="btn btn-outline-purple" href="javascript:history.back()">Go back</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,165 @@
+{#
+  DataBreakers CRM - base layout.
+  Sidebar + topbar + flash-toast container. Every nav item points at a
+  registered route; no dead links.
+#}
+{#- Sidebar link macro (must be declared before use) -#}
+{% macro _link(endpoint, icon, label, badge=0) -%}
+  {% set active = request.endpoint == endpoint %}
+  <a class="db-link{% if active %} active{% endif %}"
+     href="{{ url_for(endpoint) }}"
+     {% if active %}aria-current="page"{% endif %}>
+    <i class="bi {{ icon }}"></i>
+    <span>{{ label }}</span>
+    {% if badge %}<span class="db-badge">{{ badge if badge < 100 else '99+' }}</span>{% endif %}
+  </a>
+{%- endmacro %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>{% if title %}{{ title }} · {% endif %}{{ app_name }}</title>
+  <link rel="icon" href="{{ url_for('static', filename='images/databreakers-logo.png') }}">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="{{ url_for('static', filename='css/crm.css') }}" rel="stylesheet">
+  {% block head %}{% endblock %}
+</head>
+<body>
+{% if current_user.is_authenticated %}
+<aside class="db-sidebar" id="dbSidebar">
+  <div class="db-brand">
+    <img src="{{ url_for('static', filename='images/databreakers-logo.png') }}" alt="{{ app_name }} logo">
+    <div>
+      <div class="db-brand-name">DataBreakers</div>
+      <div class="db-brand-sub">CRM Analytics</div>
+    </div>
+  </div>
+
+  <nav class="db-nav" aria-label="Main navigation">
+    <div class="db-section">Overview</div>
+    {{ _link('dashboard.index', 'bi-grid-1x2', 'Dashboard') }}
+
+    <div class="db-section">Pipeline</div>
+    {{ _link('leads.index', 'bi-funnel', 'Leads') }}
+    {{ _link('customers.index', 'bi-people', 'Customers') }}
+    {{ _link('followups.index', 'bi-calendar-check', 'Follow-ups') }}
+    {{ _link('sales.index', 'bi-currency-dollar', 'Sales') }}
+    {{ _link('products.index', 'bi-box-seam', 'Products') }}
+
+    <div class="db-section">Insight</div>
+    {{ _link('analytics.index', 'bi-graph-up', 'Analytics') }}
+    {{ _link('predictions.index', 'bi-cpu', 'Predictions') }}
+    {{ _link('assistant.index', 'bi-stars', 'Zia AI') }}
+    {{ _link('reports.index', 'bi-file-earmark-bar-graph', 'Reports') }}
+    {{ _link('notifications.index', 'bi-bell', 'Notifications', badge=unread_notifications) }}
+
+    {% if current_user.is_admin %}
+    <div class="db-section">Administration</div>
+    {{ _link('admin.users', 'bi-person-gear', 'User Management') }}
+    {{ _link('admin.index', 'bi-sliders', 'Settings') }}
+    {% endif %}
+  </nav>
+
+  <div class="db-sidebar-footer">
+    <div class="db-user-chip">
+      <div class="db-avatar">{{ current_user.initials }}</div>
+      <div class="flex-grow-1">
+        <div class="db-user-name">{{ current_user.name }}</div>
+        <div class="db-user-role">{{ current_user.role_label }}</div>
+      </div>
+    </div>
+    <a class="btn btn-sm btn-outline-light w-100 mt-2"
+       href="{{ url_for('auth.logout') }}">
+      <i class="bi bi-box-arrow-right me-1"></i>Logout
+    </a>
+  </div>
+</aside>
+{% endif %}
+
+<main class="db-main">
+  {% block topbar %}
+  <div class="db-topbar">
+    <div class="d-flex align-items-center gap-2">
+      <button class="btn btn-light d-lg-none" type="button" data-sidebar-toggle
+              aria-label="Toggle navigation">
+        <i class="bi bi-list"></i>
+      </button>
+      <div>
+        <h1 class="db-page-title">{% block page_title %}{{ title or app_name }}{% endblock %}</h1>
+        {% block page_sub %}{% endblock %}
+      </div>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      {% block topbar_actions %}{% endblock %}
+      {% if current_user.is_authenticated %}
+      <button type="button" class="btn btn-outline-cyan btn-sm" data-ask-zia
+              aria-label="Ask Zia">
+        <i class="bi bi-stars me-1"></i><span class="d-none d-sm-inline">Ask Zia</span>
+      </button>
+      <a class="btn btn-outline-purple btn-sm" href="{{ url_for('auth.profile') }}">
+        <i class="bi bi-person-circle me-1"></i>Profile
+      </a>
+      {% endif %}
+    </div>
+  </div>
+  {% endblock %}
+
+  {# Quick-ask widget: posts to the /zia/ask JSON endpoint (csrf via meta) #}
+  {% if current_user.is_authenticated %}
+  <div class="modal fade" id="ziaQuickAsk" tabindex="-1" aria-hidden="true"
+       aria-labelledby="ziaQuickAskLabel">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content db-modal">
+        <div class="modal-header">
+          <h6 class="modal-title" id="ziaQuickAskLabel">
+            <i class="bi bi-stars me-1"></i>Ask Zia
+          </h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"
+                  aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="ziaQuickAskForm" action="{{ url_for('assistant.ask_api') }}"
+                method="post" data-zia-ask>
+            <div class="mb-2">
+              <input type="text" name="question" class="form-control"
+                     placeholder="e.g. What is my conversion rate?" required
+                     minlength="2" maxlength="300" autocomplete="off">
+            </div>
+            <div class="d-flex justify-content-end gap-2">
+              <button type="button" class="btn btn-outline-secondary btn-sm"
+                      data-bs-dismiss="modal">Cancel</button>
+              <button type="submit" class="btn btn-primary btn-sm">Ask</button>
+            </div>
+          </form>
+          <div id="ziaQuickAskAnswer" class="mt-3" hidden>
+            <div class="db-zia-answer small" style="white-space: pre-wrap"></div>
+            <div class="text-end mt-1">
+              <a class="small" href="{{ url_for('assistant.index') }}">Open Zia AI</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {# Flashed messages are rendered as toasts by crm.js #}
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+      <div data-flash="{{ message }}" data-flash-type="{{ category }}" hidden></div>
+    {% endfor %}
+  {% endwith %}
+
+  {% block content %}{% endblock %}
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="{{ url_for('static', filename='js/crm.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

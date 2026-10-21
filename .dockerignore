@@ -1,0 +1,22 @@
+# Build context exclusions for the DataBreakers CRM image.
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+instance/*.db
+instance/*.db-*
+ml/artifacts/*.pkl
+ml/artifacts/*.json
+.pytest_cache/
+.git/
+.gitignore
+tests/
+docs/
+README.md
+docker-compose.yml
+Dockerfile
+*.md

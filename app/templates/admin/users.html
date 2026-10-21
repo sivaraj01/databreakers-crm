@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block page_title %}User management{% endblock %}
+{% block page_sub %}Create employees, assign roles and deactivate accounts{% endblock %}
+{% block topbar_actions %}
+<a class="btn btn-primary btn-sm" href="{{ url_for('admin.user_new') }}">
+  <i class="bi bi-person-plus me-1"></i>New user
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="db-card mb-4">
+  <div class="db-card-body">
+    <form method="get" class="row g-2 align-items-end db-form">
+      <div class="col-md-6">
+        <label class="form-label" for="q">Search</label>
+        <input class="form-control" type="search" id="q" name="q" value="{{ search }}"
+               placeholder="Name or email">
+      </div>
+      <div class="col-md-2">
+        <button class="btn btn-primary" type="submit"><i class="bi bi-search me-1"></i>Search</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="db-card">
+  <div class="db-card-body flush">
+    {% if users %}
+    <div class="table-responsive">
+      <table class="db-table">
+        <thead>
+          <tr><th>User</th><th>Role</th><th>Status</th><th>Last sign-in</th>
+              <th>Created</th><th class="text-end">Actions</th></tr>
+        </thead>
+        <tbody>
+          {% for u in users %}
+          <tr>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <div class="db-avatar">{{ u.initials }}</div>
+                <div>
+                  <div class="fw-semibold">{{ u.name }}</div>
+                  <div class="small text-muted">{{ u.email }}</div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <span class="db-chip {% if u.is_admin %}bg-primary bg-opacity-10 text-primary{% else %}bg-light text-dark border{% endif %}">
+                {{ u.role_label }}
+              </span>
+            </td>
+            <td>
+              {% if u.is_active %}
+              <span class="db-chip bg-success bg-opacity-10 text-success">Active</span>
+              {% else %}
+              <span class="db-chip bg-secondary bg-opacity-10 text-secondary">Deactivated</span>
+              {% endif %}
+            </td>
+            <td>{{ u.last_login_at|dt if u.last_login_at else 'Never' }}</td>
+            <td>{{ u.created_at|dt('%b %d, %Y') }}</td>
+            <td class="text-end text-nowrap">
+              <a class="btn btn-sm btn-light btn-icon" href="{{ url_for('admin.user_edit', user_id=u.id) }}" title="Edit"><i class="bi bi-pencil"></i></a>
+              {% if u.id != current_user.id %}
+              <button class="btn btn-sm btn-light btn-icon {% if u.is_active %}text-danger{% else %}text-success{% endif %}"
+                      type="button"
+                      data-post="{{ url_for('admin.user_toggle', user_id=u.id) }}"
+                      data-confirm="{{ 'Deactivate' if u.is_active else 'Reactivate' }} {{ u.name }}?"
+                      title="{{ 'Deactivate' if u.is_active else 'Reactivate' }}">
+                <i class="bi {{ 'bi-person-x' if u.is_active else 'bi-person-check' }}"></i>
+              </button>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="db-empty">
+      <div class="db-empty-icon"><i class="bi bi-people"></i></div>
+      <h5>No users found</h5>
+      <p>Create employee accounts so they can log in and work their leads.</p>
+      <a class="btn btn-primary btn-sm" href="{{ url_for('admin.user_new') }}">New user</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
