@@ -99,6 +99,62 @@ docker compose exec web python scripts/init_db.py --create-admin
 
 ---
 
+## Deploy to Vercel + Neon (serverless)
+
+The same app factory also runs as a WSGI serverless function. `api/index.py`
+exports the Flask app and `vercel.json` routes every path to it, so no code
+change is needed — only a real database, because a serverless filesystem is
+read-only and ephemeral (SQLite will not work).
+
+### 1. Create the database (Neon)
+
+Create a Postgres project in the Neon console and copy the connection string
+(it looks like `postgres://user:password@ep-xxx.aws.neon.tech/neondb?sslmode=require`).
+
+Create the schema and the first admin from your machine:
+
+```bash
+DATABASE_URL="<neon connection string>" \
+ADMIN_EMAIL="you@example.com" ADMIN_NAME="Your Name" \
+ADMIN_PASSWORD="<a strong password>" \
+python scripts/init_db.py --create-admin
+```
+
+`init_db.py` is idempotent, so it is safe to re-run. The app also creates
+missing tables on first boot (`_ensure_database()`), so this step is only
+required to bootstrap the admin account.
+
+### 2. Deploy the app (Vercel)
+
+Push the repository to GitHub, then import it in Vercel (Framework preset
+"Other" — the `builds` array in `vercel.json` is already configured).
+
+Set these environment variables for the Production scope:
+
+| Variable | Value |
+| --- | --- |
+| `SECRET_KEY` | `python -c "import secrets; print(secrets.token_hex(32))"` |
+| `DATABASE_URL` | the Neon connection string |
+| `SESSION_COOKIE_SECURE` | `1` |
+| `REMEMBER_COOKIE_SECURE` | `1` |
+
+`FLASK_ENV` does **not** need to be set: `api/index.py` forces `production`
+(which refuses to start without a `SECRET_KEY`) before the config loads.
+
+### Notes and limits
+
+- **Cold starts.** scikit-learn + pandas + scipy make the function bundle
+  sizeable (~200 MB unpacked). Keep an eye on Vercel's function size limit;
+  if you hit it, drop to a container host (the provided `Dockerfile` works
+  as-is) and keep Neon for the data.
+- **Pinned ML versions.** `requirements.txt` pins `scikit-learn`/`numpy`/
+  `pandas`/`scipy` to the exact versions that produced the committed model
+  pickles. Bump them together with `ml/train_*.py`.
+- **No file uploads persist.** Anything the app writes to disk is lost when
+  the function recycles; only the database is durable.
+
+---
+
 ## Project structure
 
 ```
