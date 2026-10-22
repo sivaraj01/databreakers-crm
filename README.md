@@ -246,6 +246,14 @@ brute-forced, and only one code per account is ever live — requesting again bu
 one. The verified code unlocks the password form for 15 minutes via the session, and that
 proof is dropped as soon as a password is set.
 
+### Recovery when email is not configured
+
+An administrator can reset any account directly, with no email involved: **User Management →
+Edit → Password**. It applies the same composition rules a user meets when changing their own
+password, so an admin cannot assign a weaker one, and it is recorded as its own
+`user_password_reset` audit action rather than folded into ordinary profile edits. Tell the
+user the new password out of band and have them change it from **Profile** afterwards.
+
 ### Configuring mail
 
 Without `SMTP_HOST` the feature reports itself as unconfigured instead of pretending to send.

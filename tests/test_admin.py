@@ -64,6 +64,46 @@ def test_edit_user_without_password_keeps_old_one(admin_client, employee, app):
         assert u.check_password("EmployeePass123")  # unchanged
 
 
+def test_admin_can_reset_a_users_password(admin_client, employee, app):
+    """The recovery path that needs no email: an administrator sets a new one."""
+    resp = admin_client.post(f"/admin/users/{employee}/edit", data={
+        "name": "Eve Employee", "email": "eve@example.com",
+        "role": "employee", "is_active_flag": "y", "password": "FreshPass44X",
+    }, follow_redirects=True)
+    assert b"User updated" in resp.data
+
+    with app.app_context():
+        user = User.query.get(employee)
+        assert user.check_password("FreshPass44X")
+        assert not user.check_password("EmployeePass123")
+
+    signin = app.test_client().post("/auth/login", data={
+        "email": "eve@example.com", "password": "FreshPass44X"},
+        follow_redirects=True)
+    assert b"Invalid email or password" not in signin.data
+
+
+def test_admin_set_password_meets_the_same_strength_rules(admin_client, employee, app):
+    """An admin must not be able to assign a password a user could not choose."""
+    resp = admin_client.post(f"/admin/users/{employee}/edit", data={
+        "name": "Eve Employee", "email": "eve@example.com",
+        "role": "employee", "is_active_flag": "y", "password": "alllowercase",
+    }, follow_redirects=True)
+    assert b"Password needs" in resp.data
+    with app.app_context():
+        assert User.query.get(employee).check_password("EmployeePass123")
+
+
+def test_admin_password_reset_is_audited_as_its_own_action(admin_client, employee, app):
+    admin_client.post(f"/admin/users/{employee}/edit", data={
+        "name": "Eve Employee", "email": "eve@example.com",
+        "role": "employee", "is_active_flag": "y", "password": "FreshPass44X",
+    }, follow_redirects=True)
+    with app.app_context():
+        actions = [row.action for row in AuditLog.query.all()]
+    assert "user_password_reset" in actions
+
+
 def test_deactivate_employee(admin_client, employee, app):
     resp = admin_client.post(f"/admin/users/{employee}/toggle",
                              follow_redirects=True)

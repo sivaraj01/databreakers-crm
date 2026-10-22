@@ -13,6 +13,7 @@ from wtforms import (BooleanField, PasswordField, SelectField, StringField,
 from wtforms.validators import (DataRequired, Email, EqualTo, Length,
                                 Optional, ValidationError)
 
+from app.auth.forms import _password_problems
 from app.extensions import db
 from app.models import (Activity, AuditLog, Customer, FollowUp, Lead,
                         Notification, Product, Sale, SaleStatus, User,
@@ -49,6 +50,21 @@ class UserForm(FlaskForm):
             return
         if User.query.filter(db.func.lower(User.email) == email).first():
             raise ValidationError("That email is already registered.")
+
+    def validate_password(self, field):  # noqa: N802
+        """Hold administrator-set passwords to the same bar as self-service ones.
+
+        Without this an admin could assign a password the owner would never
+        have been allowed to pick themselves, leaving the account weaker than
+        the rules the app advertises. An empty value is legitimate on the edit
+        form and means "keep the current password".
+        """
+        password = field.data or ""
+        if not password:
+            return
+        failed = _password_problems(password)
+        if failed:
+            raise ValidationError("Password needs " + ", ".join(failed) + ".")
 
     def validate(self, extra_validators=None):
         ok = super().validate(extra_validators=extra_validators)
@@ -179,11 +195,17 @@ def user_edit(user_id: int):
             return redirect(url_for("admin.user_edit", user_id=user.id))
         user.role = form.role.data
         user.is_active_flag = bool(form.is_active_flag.data)
-        if form.password.data:
+        password_changed = bool(form.password.data)
+        if password_changed:
             user.set_password(form.password.data)
         db.session.commit()
         log_audit("user_updated", entity="User", entity_id=user.id,
                   detail=f"role={user.role} active={user.is_active_flag}")
+        if password_changed:
+            # A distinct action, so "who reset this account's password" is one
+            # filter away in the audit log rather than buried in name/role edits.
+            log_audit("user_password_reset", entity="User", entity_id=user.id,
+                      detail=user.email)
         flash("User updated.", "success")
         return redirect(url_for("admin.users"))
     return render_template("admin/user_form.html", title=f"Edit {user.name}",
