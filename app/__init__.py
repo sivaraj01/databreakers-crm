@@ -218,16 +218,22 @@ def _file_log_handler(log_dir: str) -> RotatingFileHandler | None:
 
 
 def _ensure_database() -> None:
-    """Create tables on first run if they do not exist.
+    """Create any tables that are missing.
+
+    ``db.create_all()`` runs on every boot rather than only when the schema
+    looks empty. It is idempotent - with the default ``checkfirst`` it reads
+    the catalogue and creates only the tables that do not exist, and it never
+    alters or drops an existing one - so gating it on "is the database empty"
+    would mean a table added by a later release is never created on a database
+    that was already in use, and the first request to touch that model would
+    fail.
 
     This is a convenience for development. For a controlled initialisation
     (and admin account creation) use ``python scripts/init_db.py``.
     """
     from app import models  # noqa: F401  (import registers the models)
 
-    inspector = db.inspect(db.engine)
-    if not inspector.has_table("users"):
-        db.create_all()
+    db.create_all()
 
     _ensure_app_settings_table()
 

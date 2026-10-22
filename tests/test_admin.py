@@ -1,6 +1,7 @@
 """Admin panel: user management, deactivation, audit logs, settings."""
 from __future__ import annotations
 
+from app import _ensure_database
 from app.extensions import db
 from app.models import AuditLog, User, utcnow
 
@@ -197,3 +198,25 @@ def test_broadcast_requires_title(admin_client):
 def test_employee_cannot_access_admin_json_endpoints(employee_client):
     resp = employee_client.get("/admin/audit")
     assert resp.status_code == 403
+
+
+def test_tables_added_in_a_later_release_are_created(app):
+    """A model added after the first deploy must still get its table.
+
+    Bootstrapping used to run ``create_all()`` only when the schema looked
+    empty, so on a database that was already in use a table introduced by a
+    later release was never created - and the first request touching that
+    model failed. ``create_all()`` is idempotent, so it now runs every boot.
+    """
+    with app.app_context():
+        assert db.inspect(db.engine).has_table("password_reset_otps")
+
+        db.session.execute(db.text("DROP TABLE password_reset_otps"))
+        db.session.commit()
+        assert not db.inspect(db.engine).has_table("password_reset_otps")
+
+        _ensure_database()
+
+        assert db.inspect(db.engine).has_table("password_reset_otps")
+        # An existing table must be left exactly as it was.
+        assert db.inspect(db.engine).has_table("users")
