@@ -15,13 +15,48 @@ from flask_login import current_user
 from app.extensions import db
 from app.models import (
     Customer, CustomerInteraction, FollowUp, FollowUpStatus, Lead, LeadStatus,
-    Product, Sale, SaleStatus, User,
+    Product, Sale, SaleStatus, User, utcnow,
 )
 from app.utils import (last_n_months, visible_customer_query,
                        visible_followup_query, visible_lead_query,
                        visible_sale_query)
 
-TODAY = date.today()
+def today_utc() -> date:
+    """Today's calendar date on the UTC clock.
+
+    Every timestamp written to the database comes from :func:`utcnow`, so day
+    boundaries have to be computed on that same clock. Deriving "today" from
+    the *server's local* date instead - which is what a module-level
+    ``date.today()`` did - puts a follow-up that is genuinely due today into
+    the overdue bucket for the hours between local midnight and UTC midnight.
+    It is also evaluated per call, so a long-running worker keeps reporting the
+    correct day after it crosses midnight.
+    """
+    return utcnow().date()
+
+
+# The format string is deliberately inlined as a literal instead of being sent
+# as a bound parameter. PostgreSQL only merges a SELECT expression with a GROUP
+# BY expression when the two are provably identical, and to_char(col, $1)
+# versus to_char(col, $2) are two different expressions to the planner - the
+# grouping then fails with "column "leads.created_at" must appear in the GROUP
+# BY clause". The value is a module constant, never user input, so there is
+# nothing to escape.
+MONTH_FORMAT = db.literal_column("'YYYY-MM'")
+
+
+def month_key(column):
+    """SQL expression bucketing a timestamp column by calendar month (``YYYY-MM``).
+
+    SQLite and PostgreSQL spell month formatting differently - ``strftime``
+    versus ``to_char`` - so the expression is chosen from the live dialect.
+    That keeps a single query definition working against SQLite in
+    development and Neon Postgres in production instead of failing at
+    runtime with ``function strftime(...) does not exist``.
+    """
+    if db.engine.dialect.name == "postgresql":
+        return db.func.to_char(column, MONTH_FORMAT)
+    return db.func.strftime("%Y-%m", column)
 
 
 # ===========================================================================
@@ -33,7 +68,7 @@ class DashboardService:
     @staticmethod
     def summary() -> dict:
         leads = Lead.query
-        today = datetime.combine(TODAY, datetime.min.time())
+        today = datetime.combine(today_utc(), datetime.min.time())
         tomorrow = today + timedelta(days=1)
 
         total_leads = leads.count()
@@ -79,8 +114,8 @@ class DashboardService:
         keys = last_n_months(months)
         counts = defaultdict(int)
         for ym, n in (db.session.query(
-                db.func.strftime("%Y-%m", Lead.created_at), db.func.count(Lead.id))
-                .group_by(db.func.strftime("%Y-%m", Lead.created_at)).all()):
+                month_key(Lead.created_at), db.func.count(Lead.id))
+                .group_by(month_key(Lead.created_at)).all()):
             if ym:
                 counts[ym] = n
         return {"labels": [_human_month(k) for k in keys],
@@ -101,10 +136,10 @@ class DashboardService:
     def monthly_revenue(months: int = 12) -> dict:
         keys = last_n_months(months)
         totals = defaultdict(float)
-        rows = (db.session.query(db.func.strftime("%Y-%m", Sale.sold_at),
+        rows = (db.session.query(month_key(Sale.sold_at),
                                  db.func.sum(Sale.amount * Sale.quantity))
                 .filter(Sale.status == SaleStatus.COMPLETED.value)
-                .group_by(db.func.strftime("%Y-%m", Sale.sold_at)).all())
+                .group_by(month_key(Sale.sold_at)).all())
         for ym, total in rows:
             if ym:
                 totals[ym] = float(total or 0.0)
@@ -115,9 +150,9 @@ class DashboardService:
     def customer_growth(months: int = 12) -> dict:
         keys = last_n_months(months)
         counts = defaultdict(int)
-        rows = (db.session.query(db.func.strftime("%Y-%m", Customer.created_at),
+        rows = (db.session.query(month_key(Customer.created_at),
                                  db.func.count(Customer.id))
-                .group_by(db.func.strftime("%Y-%m", Customer.created_at)).all())
+                .group_by(month_key(Customer.created_at)).all())
         for ym, n in rows:
             if ym:
                 counts[ym] = n
@@ -132,15 +167,15 @@ class DashboardService:
         """% of leads created each month that were eventually converted."""
         keys = last_n_months(months)
         created, converted = defaultdict(int), defaultdict(int)
-        for ym, n in (db.session.query(db.func.strftime("%Y-%m", Lead.created_at),
+        for ym, n in (db.session.query(month_key(Lead.created_at),
                                        db.func.count(Lead.id))
-                      .group_by(db.func.strftime("%Y-%m", Lead.created_at)).all()):
+                      .group_by(month_key(Lead.created_at)).all()):
             if ym:
                 created[ym] = n
-        for ym, n in (db.session.query(db.func.strftime("%Y-%m", Lead.created_at),
+        for ym, n in (db.session.query(month_key(Lead.created_at),
                                        db.func.count(Lead.id))
                       .filter(Lead.status == LeadStatus.CONVERTED.value)
-                      .group_by(db.func.strftime("%Y-%m", Lead.created_at)).all()):
+                      .group_by(month_key(Lead.created_at)).all()):
             if ym:
                 converted[ym] = n
         values = [round(converted[k] / created[k] * 100, 1) if created[k] else 0.0
@@ -188,7 +223,7 @@ def _human_month(ym: str) -> str:
 class FollowUpService:
     @staticmethod
     def buckets() -> dict:
-        today_start = datetime.combine(TODAY, datetime.min.time())
+        today_start = datetime.combine(today_utc(), datetime.min.time())
         tomorrow_start = today_start + timedelta(days=1)
         q = FollowUp.query.filter_by(status=FollowUpStatus.PENDING.value)
         return {
