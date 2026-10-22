@@ -463,3 +463,50 @@ class AuditLog(db.Model):
 
     def __str__(self) -> str:
         return f"{self.action} by {self.actor}"
+
+
+# ---------------------------------------------------------------------------
+# PasswordResetOtp (email one-time code for self-service password reset)
+# ---------------------------------------------------------------------------
+class PasswordResetOtp(db.Model):
+    """A single-use code proving control of an email inbox.
+
+    Only the *hash* of the code is stored, exactly like a password, so a
+    database dump or a leaked row cannot be replayed to take over an account.
+    The plaintext exists for the seconds it takes to put it in an email.
+    """
+
+    __tablename__ = "password_reset_otps"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"),
+                        nullable=False, index=True)
+    code_hash = db.Column(db.String(255), nullable=False)
+    expires_at = db.Column(db.DateTime, nullable=False, index=True)
+    attempts = db.Column(db.Integer, default=0, nullable=False)
+    consumed_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=utcnow, nullable=False, index=True)
+
+    user = db.relationship("User", backref="password_reset_otps")
+
+    @property
+    def is_consumed(self) -> bool:
+        return self.consumed_at is not None
+
+    @property
+    def is_expired(self) -> bool:
+        return utcnow() >= self.expires_at
+
+    @property
+    def is_exhausted(self) -> bool:
+        """True once the attempt budget is spent (no attempts remain)."""
+        from flask import current_app
+
+        limit = current_app.config.get("PASSWORD_RESET_MAX_ATTEMPTS", 5)
+        return self.attempts >= limit
+
+    def matches(self, code: str) -> bool:
+        return check_password_hash(self.code_hash, code)
+
+    def __str__(self) -> str:
+        return f"PasswordResetOtp(user_id={self.user_id}, expires={self.expires_at})"

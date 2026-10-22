@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block topbar %}{% endblock %}
+{% block content %}
+<div class="db-login-bg">
+  <div class="db-login-card">
+    <div class="text-center mb-4">
+      <img src="{{ url_for('static', filename='images/databreakers-logo.png') }}"
+           alt="DataBreakers" style="width:64px;height:64px;border-radius:16px"
+           class="mb-2 shadow-sm">
+      <h1 class="h4 fw-bold mb-0">Enter the code</h1>
+      <p class="text-muted small mb-0">
+        We emailed a 6-digit code to <strong>{{ masked_email }}</strong>.
+        It expires in a few minutes.
+      </p>
+    </div>
+
+    <form method="post" class="db-form" novalidate data-loading="1">
+      {{ form.hidden_tag() }}
+      <div class="mb-3">
+        <label class="form-label db-required" for="{{ form.code.id }}">Verification code</label>
+        {{ form.code(class_='form-control form-control-lg text-center' +
+                            (' is-invalid' if form.code.errors else ''),
+                     placeholder='123456', autofocus=true, inputmode='numeric',
+                     autocomplete='one-time-code', maxlength=6,
+                     style='letter-spacing: 0.4em; font-size: 1.35rem;') }}
+        {% for e in form.code.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+      </div>
+
+      {{ form.submit(class_='btn btn-primary w-100') }}
+    </form>
+
+    {# Kept outside the form above: nesting a form inside a form is invalid
+       and browsers silently drop the inner one. #}
+    <div class="text-center small text-muted mt-3">
+      Didn't get it?
+      <form method="post" action="{{ url_for('auth.resend_reset_code') }}"
+            class="d-inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-link btn-sm p-0 align-baseline">
+          Send a new code
+        </button>
+      </form>
+    </div>
+
+    <p class="text-center text-muted small mt-3 mb-0">
+      <a href="{{ url_for('auth.forgot_password') }}">Use a different email</a>
+      &nbsp;·&nbsp;
+      <a href="{{ url_for('auth.login') }}">Back to sign in</a>
+    </p>
+  </div>
+</div>
+{% endblock %}

@@ -80,6 +80,25 @@ class Config:
     ZIA_LLM_MODEL = os.environ.get("ZIA_LLM_MODEL", "gpt-4o-mini")
     ZIA_LLM_TIMEOUT_SECONDS = int(os.environ.get("ZIA_LLM_TIMEOUT_SECONDS", 30))
 
+    # --- Mail (SMTP delivery for the password-reset OTP) ---
+    # Every value comes from the environment; nothing is hardcoded and nothing
+    # here ever reaches the browser. When SMTP_HOST is unset the mailer reports
+    # itself as unconfigured instead of failing the request, so an instance
+    # without mail still runs.
+    SMTP_HOST = os.environ.get("SMTP_HOST", "").strip()
+    SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
+    SMTP_USER = os.environ.get("SMTP_USER", "").strip()
+    SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
+    MAIL_FROM = os.environ.get("MAIL_FROM", "").strip() or SMTP_USER
+    MAIL_TIMEOUT = int(os.environ.get("MAIL_TIMEOUT", "10"))
+    MAIL_USE_SSL = _bool("MAIL_USE_SSL", SMTP_PORT == 465)
+
+    # --- Password reset (email OTP) ---
+    PASSWORD_RESET_OTP_TTL_MINUTES = int(os.environ.get("PASSWORD_RESET_OTP_TTL_MINUTES", "10"))
+    PASSWORD_RESET_MAX_ATTEMPTS = int(os.environ.get("PASSWORD_RESET_MAX_ATTEMPTS", "5"))
+    PASSWORD_RESET_COOLDOWN_SECONDS = int(os.environ.get("PASSWORD_RESET_COOLDOWN_SECONDS", "60"))
+    PASSWORD_RESET_WINDOW_MINUTES = int(os.environ.get("PASSWORD_RESET_WINDOW_MINUTES", "15"))
+
     # --- Pagination defaults ---
     LEADS_PER_PAGE = 12
     CUSTOMERS_PER_PAGE = 12

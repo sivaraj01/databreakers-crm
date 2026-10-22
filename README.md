@@ -203,15 +203,66 @@ All configuration is read from environment variables (optionally loaded from `.e
 | `SESSION_COOKIE_SECURE` | Set `1` behind HTTPS | `0` |
 | `ZIA_LLM_API_KEY` | Optional LLM key for Zia's wording layer (server-side only) | empty |
 | `ZIA_LLM_BASE_URL` / `ZIA_LLM_MODEL` / `ZIA_LLM_TIMEOUT_SECONDS` | LLM provider settings | OpenAI / `gpt-4o-mini` / `30` |
+| `SMTP_HOST` | SMTP server for the password-reset code (empty disables mail) | empty |
+| `SMTP_PORT` | `587` for STARTTLS, `465` for implicit SSL | `587` |
+| `SMTP_USER` / `SMTP_PASSWORD` | SMTP credentials (**use an app password, never your account password**) | empty |
+| `MAIL_FROM` | The From: header; falls back to `SMTP_USER` | `SMTP_USER` |
+| `MAIL_TIMEOUT` | Socket timeout in seconds, so a slow provider cannot hang a request | `10` |
+| `PASSWORD_RESET_OTP_TTL_MINUTES` / `PASSWORD_RESET_MAX_ATTEMPTS` / `PASSWORD_RESET_COOLDOWN_SECONDS` / `PASSWORD_RESET_WINDOW_MINUTES` | Reset-code lifetime, guess budget, resend throttle, and how long a verified code unlocks the password form | `10` / `5` / `60` / `15` |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` / `ADMIN_NAME` | Read by `init_db.py --create-admin` | prompted |
 
 **Security rules enforced in this project**
 
 - No hardcoded admin password — the bootstrap account is created interactively or from env.
-- No plaintext passwords — hashed with Werkzeug's `generate_password_hash`.
+- No plaintext passwords — hashed with Werkzeug's `generate_password_hash`. Reset codes are
+  hashed the same way, so the database never holds a usable code.
 - No API keys in the frontend — Zia's LLM key is read only on the server, and the local
-  deterministic engine is the default so the app works with no key at all.
+  deterministic engine is the default so the app works with no key at all. The SMTP password
+  likewise stays in the environment and is never logged.
 - Server-side permission checks on every mutating route; CSV/Excel exports re-check scope.
+
+---
+
+## Password reset (email one-time code)
+
+The login page links to **Forgot password?**, which follows the same three steps as a
+consumer account:
+
+1. **Enter your email** — `/auth/forgot-password`
+2. **Enter the 6-digit code** — `/auth/verify-otp`, with a throttled "send a new code" option
+3. **Choose a new password** — `/auth/reset-password`
+
+Nothing about the account is revealed to the caller. Step 1 answers with the same wording
+whether or not the address exists, wrong/expired/exhausted codes all produce one identical
+message, and the cooldown a caller sees comes only from their own browser session. Delivery
+problems are written to the audit log rather than shown, because a message that appears only
+for real accounts would turn the form into an account-enumeration oracle. The single
+exception is SMTP being unconfigured, which is a property of the deployment and is stated
+plainly.
+
+Enforced server-side: codes are 6 digits from `secrets` (not `random`), hashed at rest,
+single-use, expire after 10 minutes, are capped at 5 attempts so 1e6 possibilities cannot be
+brute-forced, and only one code per account is ever live — requesting again burns the old
+one. The verified code unlocks the password form for 15 minutes via the session, and that
+proof is dropped as soon as a password is set.
+
+### Configuring mail
+
+Without `SMTP_HOST` the feature reports itself as unconfigured instead of pretending to send.
+For Gmail, Google will not accept your account password — create an **app password**
+(*Google Account → Security → 2-Step Verification → App passwords*), then set:
+
+```bash
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=you@gmail.com
+SMTP_PASSWORD=<the 16-character app password>
+MAIL_FROM=you@gmail.com
+```
+
+The mailer uses only the standard library, so there is no extra dependency and no third-party
+API key. Every send is bounded by `MAIL_TIMEOUT` and fails soft: an unreachable provider
+records an audit entry instead of failing the request.
 
 ---
 
